@@ -1,0 +1,6 @@
+{
+  "name": "Progressão de Acordes",
+  "description": "Aplicativo Android para montagem e sugestão inteligente de progressões de acordes para Rock, Pop e Ballad com visualizador de violão e teclado, escalas correspondentes, reprodução de áudio e biblioteca de favoritos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
