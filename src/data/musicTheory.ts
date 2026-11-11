@@ -906,6 +906,81 @@ export const CHORD_DATABASE: Record<string, ChordDefinition> = {
       soloingTips: 'Solos diretos na pentatônica de Ré.',
     },
   },
+  'F5': {
+    id: 'F5',
+    name: 'F5 (Power Chord Fá)',
+    root: 'F',
+    quality: '5',
+    symbol: 'F5',
+    notes: ['F2', 'C3', 'F3'],
+    noteNames: ['F', 'C'],
+    guitar: {
+      frets: [1, 3, 3, -1, -1, -1],
+      fingers: [1, 3, 4, null, null, null],
+      baseFret: 1,
+    },
+    piano: {
+      keys: ['F4', 'C5', 'F5'],
+      rootKey: 'F4',
+    },
+    scale: {
+      name: 'Pentatônica Menor de Fá / Punk Power',
+      mode: 'Power Chord',
+      notes: ['F', 'Ab', 'Bb', 'C', 'Eb'],
+      description: 'O power chord primordial do Punk Rock e Grunge (1ª casa).',
+      soloingTips: 'Ataques na 1ª casa e slides rápidos para G5 (3ª casa) e A5.',
+    },
+  },
+  'B5': {
+    id: 'B5',
+    name: 'B5 (Power Chord Si)',
+    root: 'B',
+    quality: '5',
+    symbol: 'B5',
+    notes: ['B2', 'F#3', 'B3'],
+    noteNames: ['B', 'F#'],
+    guitar: {
+      frets: [-1, 2, 4, 4, -1, -1],
+      fingers: [null, 1, 3, 4, null, null],
+      baseFret: 2,
+    },
+    piano: {
+      keys: ['B4', 'F#5', 'B5'],
+      rootKey: 'B4',
+    },
+    scale: {
+      name: 'Pentatônica Menor de Si',
+      mode: 'Power Chord',
+      notes: ['B', 'D', 'E', 'F#', 'A'],
+      description: 'Power chord tenso com sonoridade encorpada na 5ª corda.',
+      soloingTips: 'Use a pentatônica de B menor na 7ª casa.',
+    },
+  },
+  'Bb5': {
+    id: 'Bb5',
+    name: 'Bb5 (Power Chord Si Bemol)',
+    root: 'Bb',
+    quality: '5',
+    symbol: 'Bb5',
+    notes: ['Bb2', 'F3', 'Bb3'],
+    noteNames: ['Bb', 'F'],
+    guitar: {
+      frets: [-1, 1, 3, 3, -1, -1],
+      fingers: [null, 1, 3, 4, null, null],
+      baseFret: 1,
+    },
+    piano: {
+      keys: ['Bb4', 'F5', 'Bb5'],
+      rootKey: 'Bb4',
+    },
+    scale: {
+      name: 'Pentatônica Menor de Si Bemol',
+      mode: 'Power Chord',
+      notes: ['Bb', 'Db', 'Eb', 'F', 'Ab'],
+      description: 'Power chord pesado na 1ª casa da 5ª corda.',
+      soloingTips: 'Excelente para cadências punk e stoner rock.',
+    },
+  },
 };
 
 export const GENRE_PRESETS: Record<Genre, SavedProgression[]> = {
@@ -1053,6 +1128,111 @@ export const GENRE_PRESETS: Record<Genre, SavedProgression[]> = {
       isPreset: true,
     },
   ],
+  electronic: [
+    {
+      id: 'electronic-1',
+      name: 'EDM & House Melódico Anthemic',
+      description: 'Progressão eufórica com cadência menor para maior épica (vi - IV - I - V).',
+      genre: 'electronic',
+      chords: [CHORD_DATABASE['Am'], CHORD_DATABASE['F'], CHORD_DATABASE['C'], CHORD_DATABASE['G']],
+      tempoBpm: 126,
+      instrument: 'piano',
+      createdAt: Date.now() - 4000,
+      isPreset: true,
+    },
+    {
+      id: 'electronic-2',
+      name: 'Synthwave & Retrowave 80s',
+      description: 'Atmosfera nostálgica com sintetizadores e acordes suspensos (vi - V - IV - V).',
+      genre: 'electronic',
+      chords: [CHORD_DATABASE['Am'], CHORD_DATABASE['G'], CHORD_DATABASE['F'], CHORD_DATABASE['Em']],
+      tempoBpm: 118,
+      instrument: 'piano',
+      createdAt: Date.now() - 3000,
+      isPreset: true,
+    },
+    {
+      id: 'electronic-3',
+      name: 'Future Bass & Progressive Melodic',
+      description: 'Acordes abertos com 7ª e 9ª com grande impacto sonoro (IVmaj7 - I - V - vi).',
+      genre: 'electronic',
+      chords: [CHORD_DATABASE['Fmaj7'], CHORD_DATABASE['Cadd9'], CHORD_DATABASE['G'], CHORD_DATABASE['Am7']],
+      tempoBpm: 130,
+      instrument: 'piano',
+      createdAt: Date.now() - 2500,
+      isPreset: true,
+    },
+  ],
+  techno: [
+    {
+      id: 'techno-1',
+      name: 'Hypnotic Peak-Time Techno (i - bVI)',
+      description: 'Tensão pulsante e hipnótica em tom menor com oscilação semidireta (Am -> F -> Am -> Em).',
+      genre: 'techno',
+      chords: [CHORD_DATABASE['Am'], CHORD_DATABASE['F'], CHORD_DATABASE['Am'], CHORD_DATABASE['Em']],
+      tempoBpm: 134,
+      instrument: 'piano',
+      createdAt: Date.now() - 2000,
+      isPreset: true,
+    },
+    {
+      id: 'techno-2',
+      name: 'Dark Industrial Techno Driving Loop',
+      description: 'Power chords sombrios e enérgicos com drive constante em 138 BPM.',
+      genre: 'techno',
+      chords: [CHORD_DATABASE['E5'], CHORD_DATABASE['C5'], CHORD_DATABASE['E5'], CHORD_DATABASE['D5']],
+      tempoBpm: 138,
+      instrument: 'piano',
+      createdAt: Date.now() - 1500,
+      isPreset: true,
+    },
+    {
+      id: 'techno-3',
+      name: 'Melodic Techno & Afterlife Vibe',
+      description: 'Clima espacial e transcendental em cadência eólica (i - bVII - bVI - v).',
+      genre: 'techno',
+      chords: [CHORD_DATABASE['Am7'], CHORD_DATABASE['G'], CHORD_DATABASE['Fmaj7'], CHORD_DATABASE['Em7']],
+      tempoBpm: 124,
+      instrument: 'piano',
+      createdAt: Date.now() - 1000,
+      isPreset: true,
+    },
+  ],
+  punk: [
+    {
+      id: 'punk-1',
+      name: 'Pop Punk Clássico (Blink/Green Day)',
+      description: 'Os 3 acordes lendários e velozes do punk pop mundial (I - IV - V).',
+      genre: 'punk',
+      chords: [CHORD_DATABASE['A5'], CHORD_DATABASE['D5'], CHORD_DATABASE['E5'], CHORD_DATABASE['D5']],
+      tempoBpm: 165,
+      instrument: 'guitar',
+      createdAt: Date.now() - 800,
+      isPreset: true,
+    },
+    {
+      id: 'punk-2',
+      name: 'Skate Punk & Hardcore Melódico',
+      description: 'Velocidade frenética com cadência emotiva em power chords (vi - IV - I - V).',
+      genre: 'punk',
+      chords: [CHORD_DATABASE['A5'], CHORD_DATABASE['F5'], CHORD_DATABASE['C5'], CHORD_DATABASE['G5']],
+      tempoBpm: 178,
+      instrument: 'guitar',
+      createdAt: Date.now() - 600,
+      isPreset: true,
+    },
+    {
+      id: 'punk-3',
+      name: 'Post-Punk & New Wave Garage',
+      description: 'Riffs secos e angulares com tensão crua e ritmo acelerado.',
+      genre: 'punk',
+      chords: [CHORD_DATABASE['E5'], CHORD_DATABASE['G5'], CHORD_DATABASE['A5'], CHORD_DATABASE['C5']],
+      tempoBpm: 155,
+      instrument: 'guitar',
+      createdAt: Date.now() - 400,
+      isPreset: true,
+    },
+  ],
 };
 
 // Initial starter chord recommendations per genre when timeline is empty
@@ -1075,6 +1255,40 @@ export function getStarterChordsForGenre(genre: Genre): ChordDefinition[] {
         CHORD_DATABASE['Em7'],
         CHORD_DATABASE['Dm7'],
         CHORD_DATABASE['Fmaj7'],
+      ];
+    case 'electronic':
+      return [
+        CHORD_DATABASE['Am'],
+        CHORD_DATABASE['Fmaj7'],
+        CHORD_DATABASE['Cadd9'],
+        CHORD_DATABASE['G'],
+        CHORD_DATABASE['F'],
+        CHORD_DATABASE['Em7'],
+      ];
+    case 'techno':
+      return [
+        CHORD_DATABASE['Am'],
+        CHORD_DATABASE['E5'],
+        CHORD_DATABASE['F'],
+        CHORD_DATABASE['C5'],
+        CHORD_DATABASE['Em'],
+        CHORD_DATABASE['D5'],
+      ];
+    case 'punk':
+      return [
+        CHORD_DATABASE['A5'],
+        CHORD_DATABASE['D5'],
+        CHORD_DATABASE['E5'],
+        CHORD_DATABASE['C5'],
+        CHORD_DATABASE['G5'],
+        CHORD_DATABASE['F5'] || CHORD_DATABASE['F'],
+      ];
+    case 'jazz':
+      return [
+        CHORD_DATABASE['Dm7'],
+        CHORD_DATABASE['G7'],
+        CHORD_DATABASE['Cmaj7'],
+        CHORD_DATABASE['Am7'],
       ];
     case 'pop':
     default:
@@ -1304,6 +1518,12 @@ export function getGenreLabel(genre: Genre): string {
       return 'Acústico';
     case 'jazz':
       return 'Jazz';
+    case 'electronic':
+      return 'Eletrônica';
+    case 'techno':
+      return 'Techno';
+    case 'punk':
+      return 'Punk Rock';
     default:
       return genre;
   }

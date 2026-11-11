@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Genre,
   InstrumentType,
@@ -6,6 +6,9 @@ import {
   ChordDefinition,
   TimelineChordItem,
   SavedProgression,
+  SavedMelodyConfig,
+  ChordRhythmPattern,
+  BackingTrackStyle,
 } from './types';
 import {
   CHORD_DATABASE,
@@ -16,13 +19,21 @@ import {
 import { audioEngine } from './utils/audioPlayer';
 import { AndroidHeader } from './components/AndroidHeader';
 import { ChordTimeline } from './components/ChordTimeline';
+import { MelodySuggestionPanel } from './components/MelodySuggestionPanel';
 import { ChordSuggestions } from './components/ChordSuggestions';
 import { ChordInspector } from './components/ChordInspector';
+import { ScaleDictionaryPanel } from './components/ScaleDictionaryPanel';
 import { ChordPickerModal } from './components/ChordPickerModal';
 import {
   FavoritesLibrary,
   SaveProgressionModal,
 } from './components/FavoritesLibrary';
+import { ExportMidiModal } from './components/ExportMidiModal';
+import { downloadMidiFile } from './utils/midiExport';
+import { OfflineIndicator } from './components/OfflineIndicator';
+import { useAuth } from './context/AuthContext';
+import { useSyncProgressions } from './utils/useSyncProgressions';
+import { transposeTimeline, transposeMelody } from './utils/transposition';
 
 const LOCAL_STORAGE_KEY = 'harmoniq_saved_progressions';
 
@@ -32,7 +43,28 @@ export default function App() {
   const [instrument, setInstrument] = useState<InstrumentType>('piano');
   const [displayMode, setDisplayMode] = useState<DisplayMode>('guitar');
   const [tempoBpm, setTempoBpm] = useState<number>(110);
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
+  const [backingStyle, setBackingStyle] = useState<BackingTrackStyle>(() => {
+    try {
+      const saved = localStorage.getItem('harmoniq_backing_style');
+      if (saved && ['none', 'rock', 'funk', 'reggae', 'shuffle', 'disco', 'bossa', 'punk', 'techno'].includes(saved)) {
+        return saved as BackingTrackStyle;
+      }
+    } catch {
+      // ignore
+    }
+    return 'none';
+  });
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('harmoniq_theme');
+      if (saved !== null) {
+        return saved === 'dark';
+      }
+      return true;
+    } catch {
+      return true;
+    }
+  });
   const [isMobileFrameMode, setIsMobileFrameMode] = useState<boolean>(false);
 
   // Octave Offset for currently inspected chord (-2, -1, 0, +1, +2)
@@ -42,6 +74,7 @@ export default function App() {
   const [isFavoritesOpen, setIsFavoritesOpen] = useState<boolean>(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState<boolean>(false);
   const [isPickerOpen, setIsPickerOpen] = useState<boolean>(false);
+  const [isMidiModalOpen, setIsMidiModalOpen] = useState<boolean>(false);
 
   // Timeline State (starts with initial chord C in Pop mode for instant joy)
   const [timeline, setTimeline] = useState<TimelineChordItem[]>([
@@ -61,51 +94,100 @@ export default function App() {
     CHORD_DATABASE['C']
   );
 
-  // Favorites / Saved Progressions (Initialized with presets and merged with localStorage)
-  const [savedProgressions, setSavedProgressions] = useState<SavedProgression[]>(() => {
-    try {
-      const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-      const allPresets = [
-        ...GENRE_PRESETS.pop,
-        ...GENRE_PRESETS.rock,
-        ...GENRE_PRESETS.ballad,
-        ...GENRE_PRESETS.blues,
-        ...GENRE_PRESETS.acoustic,
-      ];
-      if (stored) {
-        const userSaved: SavedProgression[] = JSON.parse(stored);
-        return [...userSaved, ...allPresets];
-      }
-      return allPresets;
-    } catch {
-      return [
-        ...GENRE_PRESETS.pop,
-        ...GENRE_PRESETS.rock,
-        ...GENRE_PRESETS.ballad,
-      ];
-    }
-  });
+  // Active melody configuration synced with MelodySuggestionPanel
+  const [currentMelodyConfig, setCurrentMelodyConfig] = useState<SavedMelodyConfig | null>(null);
 
-  // Dark mode effect (always dark gray theme by default)
+  // Cumulative semitones shifted by transposition
+  const [totalTransposition, setTotalTransposition] = useState<number>(0);
+
+  const handleMelodyChange = useCallback((melody: SavedMelodyConfig) => {
+    setCurrentMelodyConfig((prev) => {
+      if (
+        prev &&
+        prev.id === melody.id &&
+        prev.style === melody.style &&
+        prev.instrument === melody.instrument &&
+        prev.octaveOffset === melody.octaveOffset &&
+        prev.variationSeed === melody.variationSeed &&
+        prev.scaleType === melody.scaleType
+      ) {
+        return prev;
+      }
+      return melody;
+    });
+  }, []);
+
+  const { user } = useAuth();
+  const {
+    progressions: savedProgressions,
+    saveProgression: syncSaveProgression,
+    deleteProgression: syncDeleteProgression,
+    isSyncing,
+    syncStatus,
+  } = useSyncProgressions(user);
+
+  // Dark/Light mode synchronization
   useEffect(() => {
+    try {
+      localStorage.setItem('harmoniq_theme', isDarkMode ? 'dark' : 'light');
+    } catch {
+      // ignore
+    }
+
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
     } else {
+      document.documentElement.classList.add('light');
       document.documentElement.classList.remove('dark');
     }
   }, [isDarkMode]);
 
-  // Adjust default BPM and Instrument when genre changes
+  // Adjust default BPM, Instrument and Backing Track groove when genre changes
   const handleGenreChange = (newGenre: Genre) => {
     setSelectedGenre(newGenre);
+    let defaultBacking: BackingTrackStyle = 'none';
     if (newGenre === 'rock') {
       setInstrument('guitar');
       setTempoBpm(128);
+      defaultBacking = 'rock';
+    } else if (newGenre === 'punk') {
+      setInstrument('guitar');
+      setTempoBpm(168);
+      defaultBacking = 'punk';
+    } else if (newGenre === 'techno') {
+      setInstrument('piano');
+      setTempoBpm(132);
+      defaultBacking = 'techno';
+    } else if (newGenre === 'electronic') {
+      setInstrument('piano');
+      setTempoBpm(126);
+      defaultBacking = 'disco';
     } else if (newGenre === 'ballad') {
       setInstrument('piano');
       setTempoBpm(78);
+      defaultBacking = 'none';
+    } else if (newGenre === 'acoustic') {
+      setInstrument('guitar');
+      setTempoBpm(88);
+      defaultBacking = 'bossa';
+    } else if (newGenre === 'blues') {
+      setInstrument('guitar');
+      setTempoBpm(96);
+      defaultBacking = 'shuffle';
+    } else if (newGenre === 'jazz') {
+      setInstrument('piano');
+      setTempoBpm(110);
+      defaultBacking = 'bossa';
     } else if (newGenre === 'pop') {
       setTempoBpm(116);
+      defaultBacking = 'funk';
+    }
+    setBackingStyle(defaultBacking);
+    try {
+      localStorage.setItem('harmoniq_backing_style', defaultBacking);
+    } catch {
+      // ignore
     }
   };
 
@@ -131,6 +213,25 @@ export default function App() {
     const newTimeline = [...timeline, newItem];
     setTimeline(newTimeline);
     setSelectedIndex(newTimeline.length - 1);
+  };
+
+  // Replace currently selected chord in timeline with an inversion or variation
+  const handleReplaceSelectedChord = (replacementChord: ChordDefinition) => {
+    if (selectedIndex === null || !timeline[selectedIndex]) {
+      // If nothing selected, add as new chord
+      handleSelectAndAddChord(replacementChord);
+      return;
+    }
+
+    const copy = [...timeline];
+    const existing = copy[selectedIndex];
+    copy[selectedIndex] = {
+      ...existing,
+      chord: replacementChord,
+    };
+
+    setTimeline(copy);
+    setInspectedChord(replacementChord);
   };
 
   // Just preview chord without adding
@@ -175,6 +276,18 @@ export default function App() {
     }
   };
 
+  // Update rhythm pattern of specific timeline item
+  const handleUpdateChordRhythm = (index: number, newRhythm: ChordRhythmPattern) => {
+    if (index >= 0 && index < timeline.length) {
+      const copy = [...timeline];
+      copy[index] = {
+        ...copy[index],
+        rhythmPattern: newRhythm,
+      };
+      setTimeline(copy);
+    }
+  };
+
   // Remove chord from timeline
   const handleRemoveChord = (index: number) => {
     const updated = timeline.filter((_, idx) => idx !== index);
@@ -208,13 +321,50 @@ export default function App() {
     audioEngine.stopSequence();
     setTimeline([]);
     setSelectedIndex(null);
+    setTotalTransposition(0);
   };
 
-  // Save current progression to personal favorites
-  const handleSaveCurrentProgression = (name: string, description: string) => {
+  // Transpose the entire progression while preserving harmonic relationships
+  const handleTransposeProgression = useCallback((deltaSemitones: number) => {
+    if (timeline.length === 0 || deltaSemitones === 0) return;
+
+    const updatedTimeline = transposeTimeline(timeline, deltaSemitones);
+    setTimeline(updatedTimeline);
+    setTotalTransposition((prev) => (prev + deltaSemitones) % 12);
+
+    // Update currently inspected chord if selected
+    if (selectedIndex !== null && updatedTimeline[selectedIndex]) {
+      setInspectedChord(updatedTimeline[selectedIndex].chord);
+    } else if (updatedTimeline.length > 0) {
+      setInspectedChord(updatedTimeline[0].chord);
+    }
+
+    // Transpose melody if active so it stays harmonically aligned
+    if (currentMelodyConfig && currentMelodyConfig.notes.length > 0) {
+      setCurrentMelodyConfig((prev) => (prev ? transposeMelody(prev, deltaSemitones) : null));
+    }
+
+    // Play brief audio preview of the current chord in the new key
+    if (updatedTimeline.length > 0) {
+      const activeIdx = selectedIndex !== null && updatedTimeline[selectedIndex] ? selectedIndex : 0;
+      audioEngine.playChord(
+        updatedTimeline[activeIdx].chord,
+        instrument,
+        1.2,
+        updatedTimeline[activeIdx].octaveOffset ?? 0
+      );
+    }
+  }, [timeline, selectedIndex, currentMelodyConfig, instrument]);
+
+  // Save current progression to personal favorites (syncs to Firestore when logged in)
+  const handleSaveCurrentProgression = (
+    name: string,
+    description: string,
+    includeMelody: boolean = true
+  ) => {
     if (timeline.length === 0) return;
     const newProg: SavedProgression = {
-      id: `user-${Date.now()}`,
+      id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       name,
       description,
       genre: selectedGenre,
@@ -223,40 +373,61 @@ export default function App() {
       instrument,
       createdAt: Date.now(),
       isPreset: false,
+      melody: includeMelody && currentMelodyConfig ? currentMelodyConfig : undefined,
     };
 
-    const updated = [newProg, ...savedProgressions];
-    setSavedProgressions(updated);
-
-    // Save only user progressions in localStorage
-    const userOnly = updated.filter((p) => !p.isPreset);
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(userOnly));
-    } catch {
-      // ignore
-    }
+    syncSaveProgression(newProg);
   };
 
   // Delete saved progression
   const handleDeleteProgression = (id: string) => {
-    const updated = savedProgressions.filter((p) => p.id !== id);
-    setSavedProgressions(updated);
-    const userOnly = updated.filter((p) => !p.isPreset);
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(userOnly));
-    } catch {
-      // ignore
-    }
+    syncDeleteProgression(id);
+  };
+
+  // Helper to safely resolve chord definitions
+  const resolveChordItem = useCallback((c: any): ChordDefinition | null => {
+    if (!c) return null;
+    if (typeof c === 'string') return CHORD_DATABASE[c] || null;
+    if (c.symbol && c.notes) return c as ChordDefinition;
+    if (c.name && CHORD_DATABASE[c.name]) return CHORD_DATABASE[c.name];
+    if (c.symbol && CHORD_DATABASE[c.symbol]) return CHORD_DATABASE[c.symbol];
+    return null;
+  }, []);
+
+  // Direct export of a saved progression to MIDI
+  const handleExportSavedProgressionMidi = (prog: SavedProgression) => {
+    const validChords = (prog.chords || []).map(resolveChordItem).filter((c): c is ChordDefinition => c !== null);
+    const timelineItems: TimelineChordItem[] = validChords.map((c, idx) => ({
+      id: `export-${c.id || idx}-${idx}`,
+      chord: c,
+      durationBeats: 4,
+      genreContext: prog.genre,
+      octaveOffset: 0,
+    }));
+
+    downloadMidiFile(
+      {
+        timeline: timelineItems,
+        melodyNotes: prog.melody?.notes || null,
+        tempoBpm: prog.tempoBpm || 110,
+        instrument: prog.instrument || 'piano',
+        songTitle: prog.name,
+        includeChords: true,
+        includeMelody: Boolean(prog.melody?.notes && prog.melody.notes.length > 0),
+      },
+      `${prog.name || 'harmoniq-progressao'}.mid`
+    );
   };
 
   // Load progression into timeline
   const handleLoadProgression = (prog: SavedProgression) => {
-    audioEngine.stopSequence();
+    audioEngine.stopAll();
     setSelectedGenre(prog.genre);
     setTempoBpm(prog.tempoBpm || 110);
     setInstrument(prog.instrument || 'piano');
 
-    const newTimeline: TimelineChordItem[] = prog.chords.map((c, idx) => ({
+    const validChords = (prog.chords || []).map(resolveChordItem).filter((c): c is ChordDefinition => c !== null);
+    const newTimeline: TimelineChordItem[] = validChords.map((c, idx) => ({
       id: `load-${Date.now()}-${idx}`,
       chord: c,
       durationBeats: 4,
@@ -265,6 +436,20 @@ export default function App() {
     }));
 
     setTimeline(newTimeline);
+    setTotalTransposition(0);
+    if (newTimeline.length > 0) {
+      setSelectedIndex(0);
+      setInspectedChord(newTimeline[0].chord);
+      setInspectedOctaveOffset(newTimeline[0].octaveOffset ?? 0);
+    } else {
+      setSelectedIndex(null);
+    }
+
+    // Restore saved melody if present
+    if (prog.melody) {
+      setCurrentMelodyConfig(prog.melody);
+    }
+
     if (newTimeline.length > 0) {
       setSelectedIndex(0);
       setInspectedChord(newTimeline[0].chord);
@@ -280,21 +465,21 @@ export default function App() {
   }, [timeline, selectedGenre]);
 
   return (
-    <div className={`min-h-screen bg-[#15171e] text-slate-100 font-sans transition-colors duration-150 ${isMobileFrameMode ? 'p-3 md:py-6 flex justify-center items-start' : 'p-3 sm:p-5'}`}>
+    <div className={`min-h-screen ${isDarkMode ? 'bg-[#0c0e12] text-slate-400' : 'bg-slate-100 text-slate-700'} font-sans transition-colors duration-200 ${isMobileFrameMode ? 'p-3 md:py-6 flex justify-center items-start' : 'p-3 sm:p-5'}`}>
       {/* Outer Shell container (supports Android Phone Mock Frame or Responsive Full-Width) */}
       <div
         className={`w-full transition-all duration-200 ${
           isMobileFrameMode
-            ? 'max-w-md bg-[#181b24] rounded-none shadow-2xl border-4 border-[#2d3342] overflow-hidden relative'
+            ? `max-w-md ${isDarkMode ? 'bg-[#12151d] border-[#232836]' : 'bg-white border-slate-300 shadow-2xl'} rounded-none shadow-xl border overflow-hidden relative`
             : 'max-w-6xl mx-auto'
         }`}
       >
         {/* Android Phone Status Bar (when in mobile frame) */}
         {isMobileFrameMode && (
-          <div className="bg-[#12141a] text-slate-300 px-5 pt-2.5 pb-2 flex items-center justify-between text-xs font-bold select-none border-b border-[#2d3342]">
+          <div className={`${isDarkMode ? 'bg-[#0e1017] text-slate-500 border-[#1e2330]' : 'bg-slate-100 text-slate-600 border-slate-200'} px-5 pt-2.5 pb-2 flex items-center justify-between text-xs font-normal select-none border-b`}>
             <span>09:41</span>
             {/* Camera punch-hole */}
-            <div className="w-3 h-3 rounded-none bg-black border border-[#384050] mx-auto"></div>
+            <div className={`w-2.5 h-2.5 rounded-none ${isDarkMode ? 'bg-black border-[#2d3448]' : 'bg-slate-800 border-slate-600'} border mx-auto`}></div>
             <div className="flex items-center gap-1.5 text-[10px]">
               <span>5G</span>
               <span>100%</span>
@@ -302,7 +487,7 @@ export default function App() {
           </div>
         )}
 
-        <div className={`space-y-4 ${isMobileFrameMode ? 'p-3 max-h-[85vh] overflow-y-auto' : ''}`}>
+        <div className={`space-y-3.5 ${isMobileFrameMode ? 'p-3 max-h-[85vh] overflow-y-auto' : ''}`}>
           {/* Header & Genre Tabs */}
           <AndroidHeader
             selectedGenre={selectedGenre}
@@ -313,6 +498,14 @@ export default function App() {
             onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
             isMobileFrameMode={isMobileFrameMode}
             onToggleMobileFrameMode={() => setIsMobileFrameMode(!isMobileFrameMode)}
+            syncStatus={syncStatus}
+            isSyncing={isSyncing}
+            onScrollToScaleDictionary={() => {
+              const el = document.getElementById('scale-dictionary-section');
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }}
           />
 
           {/* Timeline Sequencer */}
@@ -324,27 +517,21 @@ export default function App() {
             onMoveChord={handleMoveChord}
             onClearTimeline={handleClearTimeline}
             onOpenSaveModal={() => setIsSaveModalOpen(true)}
+            onOpenExportMidi={() => setIsMidiModalOpen(true)}
             onOpenPickerModal={() => setIsPickerOpen(true)}
             tempoBpm={tempoBpm}
             onTempoChange={setTempoBpm}
             instrument={instrument}
             onInstrumentChange={setInstrument}
             onUpdateChordOctave={handleUpdateChordOctave}
+            onUpdateChordRhythm={handleUpdateChordRhythm}
+            activeBackingStyle={backingStyle}
+            onBackingStyleChange={setBackingStyle}
+            onTransposeProgression={handleTransposeProgression}
+            totalTransposition={totalTransposition}
           />
 
-          {/* Active Chord Inspector (Diagrams for Violão / Teclado + Escala Correspondente + Octave Controls) */}
-          <ChordInspector
-            chord={inspectedChord}
-            displayMode={displayMode}
-            onDisplayModeChange={setDisplayMode}
-            instrument={instrument}
-            onAddToTimeline={handleSelectAndAddChord}
-            isInTimeline={timeline.some((t) => t.chord.id === inspectedChord.id)}
-            octaveOffset={inspectedOctaveOffset}
-            onOctaveChange={handleOctaveChange}
-          />
-
-          {/* Smart Next Chord Suggestions Grid */}
+          {/* Smart Next Chord Suggestions Grid (Placed directly after the Timeline) */}
           <ChordSuggestions
             suggestions={suggestions}
             currentLastChord={lastChordInTimeline}
@@ -355,12 +542,45 @@ export default function App() {
             onOpenFullPicker={() => setIsPickerOpen(true)}
             currentOctaveOffset={inspectedOctaveOffset}
           />
+
+          {/* Melody Suggestions & Scale Visualizer (Fretboard & Keyboard) */}
+          <MelodySuggestionPanel
+            timeline={timeline}
+            selectedGenre={selectedGenre}
+            tempoBpm={tempoBpm}
+            chordInstrument={instrument}
+            inspectedChord={inspectedChord}
+            loadedMelody={currentMelodyConfig}
+            onMelodyChange={handleMelodyChange}
+            onOpenExportMidi={() => setIsMidiModalOpen(true)}
+          />
+
+          {/* Dicionário de Escalas & Modos (Seletor de Tom e Modo, Estrutura Intervalar e Digitações) */}
+          <ScaleDictionaryPanel
+            initialRoot={timeline[0]?.chord?.root || 'C'}
+            initialScaleId="lydian"
+            defaultInstrument={instrument}
+          />
+
+          {/* Active Chord Inspector (Diagrams for Violão / Teclado + Escala Correspondente + Octave Controls + Inversions) */}
+          <ChordInspector
+            chord={inspectedChord}
+            displayMode={displayMode}
+            onDisplayModeChange={setDisplayMode}
+            instrument={instrument}
+            onAddToTimeline={handleSelectAndAddChord}
+            onReplaceSelectedInTimeline={handleReplaceSelectedChord}
+            selectedTimelineChord={selectedIndex !== null ? timeline[selectedIndex] || null : null}
+            isInTimeline={timeline.some((t) => t.chord.id === inspectedChord.id)}
+            octaveOffset={inspectedOctaveOffset}
+            onOctaveChange={handleOctaveChange}
+          />
         </div>
 
         {/* Android Navigation Bar (when in mobile frame) */}
         {isMobileFrameMode && (
-          <div className="py-2 bg-[#12141a] flex justify-center items-center border-t border-[#2d3342]">
-            <div className="w-28 h-1 bg-slate-500 rounded-none"></div>
+          <div className={`py-2 ${isDarkMode ? 'bg-[#0e1017] border-[#1e2330]' : 'bg-slate-100 border-slate-200'} flex justify-center items-center border-t`}>
+            <div className={`w-24 h-0.5 ${isDarkMode ? 'bg-slate-600' : 'bg-slate-400'} rounded-none`}></div>
           </div>
         )}
       </div>
@@ -380,6 +600,7 @@ export default function App() {
         onLoadProgression={handleLoadProgression}
         onDeleteProgression={handleDeleteProgression}
         activeGenre={selectedGenre}
+        onExportMidi={handleExportSavedProgressionMidi}
       />
 
       <SaveProgressionModal
@@ -387,7 +608,22 @@ export default function App() {
         onClose={() => setIsSaveModalOpen(false)}
         onSave={handleSaveCurrentProgression}
         defaultName={defaultSaveName}
+        currentMelody={currentMelodyConfig}
       />
+
+      <ExportMidiModal
+        isOpen={isMidiModalOpen}
+        onClose={() => setIsMidiModalOpen(false)}
+        timeline={timeline}
+        tempoBpm={tempoBpm}
+        instrument={instrument}
+        songTitle={defaultSaveName}
+        melodyNotes={currentMelodyConfig?.notes || null}
+        melodyStyleName={currentMelodyConfig?.style}
+        initialBackingStyle={backingStyle}
+      />
+
+      <OfflineIndicator />
     </div>
   );
 }

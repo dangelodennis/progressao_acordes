@@ -55,8 +55,8 @@ export const GuitarChordDiagram: React.FC<GuitarChordDiagramProps> = ({
             x={dimensions.marginX}
             y={dimensions.marginY}
             width={(numStrings - 1) * dimensions.stringSpacing}
-            height={5}
-            className="fill-slate-200"
+            height={4}
+            className="fill-slate-400/70"
           />
         ) : (
           <line
@@ -64,8 +64,8 @@ export const GuitarChordDiagram: React.FC<GuitarChordDiagramProps> = ({
             y1={dimensions.marginY}
             x2={dimensions.marginX + (numStrings - 1) * dimensions.stringSpacing}
             y2={dimensions.marginY}
-            strokeWidth={1.5}
-            className="stroke-slate-500"
+            strokeWidth={1.2}
+            className="stroke-slate-500/70"
           />
         )}
 
@@ -77,14 +77,14 @@ export const GuitarChordDiagram: React.FC<GuitarChordDiagramProps> = ({
             y1={getY(fIdx)}
             x2={dimensions.marginX + (numStrings - 1) * dimensions.stringSpacing}
             y2={getY(fIdx)}
-            strokeWidth={1.2}
-            className="stroke-[#3a4253]"
+            strokeWidth={1}
+            className="stroke-[#252b3a]"
           />
         ))}
 
         {/* Strings vertical lines (6th to 1st) */}
         {Array.from({ length: numStrings }).map((_, sIdx) => {
-          const strokeWidth = 2.4 - sIdx * 0.28;
+          const strokeWidth = 1.8 - sIdx * 0.2;
           return (
             <line
               key={`string-${sIdx}`}
@@ -93,7 +93,7 @@ export const GuitarChordDiagram: React.FC<GuitarChordDiagramProps> = ({
               x2={getX(sIdx)}
               y2={getY(numFrets)}
               strokeWidth={strokeWidth}
-              className="stroke-slate-400"
+              className="stroke-slate-500/70"
             />
           );
         })}
@@ -106,7 +106,7 @@ export const GuitarChordDiagram: React.FC<GuitarChordDiagramProps> = ({
               y={getY(barre.fret - baseFret) + dimensions.fretSpacing * 0.25}
               width={(barre.fromString - barre.toString) * dimensions.stringSpacing}
               height={dimensions.fretSpacing * 0.5}
-              className="fill-indigo-600 border border-indigo-400"
+              className="fill-indigo-600/80 border border-indigo-400/60"
             />
           </g>
         )}
@@ -124,19 +124,19 @@ export const GuitarChordDiagram: React.FC<GuitarChordDiagramProps> = ({
                   x={x}
                   y={dimensions.marginY - 10}
                   textAnchor="middle"
-                  className="text-[13px] font-black fill-rose-500"
+                  className="text-[11px] font-normal fill-rose-400/80"
                 >
                   ✕
                 </text>
               )}
               {isOpen && (
                 <rect
-                  x={x - 4}
-                  y={dimensions.marginY - 16}
-                  width={8}
-                  height={8}
-                  className="fill-none stroke-emerald-400"
-                  strokeWidth={2}
+                  x={x - 3.5}
+                  y={dimensions.marginY - 14}
+                  width={7}
+                  height={7}
+                  className="fill-none stroke-emerald-400/70"
+                  strokeWidth={1.4}
                 />
               )}
               {/* String Note Name at bottom */}
@@ -144,7 +144,7 @@ export const GuitarChordDiagram: React.FC<GuitarChordDiagramProps> = ({
                 x={x}
                 y={getY(numFrets) + 16}
                 textAnchor="middle"
-                className="text-[10px] font-semibold fill-slate-400"
+                className="text-[10px] font-light fill-slate-400"
               >
                 {stringNames[sIdx]}
               </text>
@@ -170,14 +170,14 @@ export const GuitarChordDiagram: React.FC<GuitarChordDiagramProps> = ({
                 y={cy - halfSize}
                 width={dimensions.dotSize}
                 height={dimensions.dotSize}
-                className="fill-indigo-600 stroke stroke-indigo-400/80 shadow-md"
+                className="fill-indigo-600/85 stroke stroke-indigo-400/60 shadow-xs"
               />
               {fingerNum !== null && fingerNum !== undefined && fingerNum > 0 && (
                 <text
                   x={cx}
-                  y={cy + 4}
+                  y={cy + 3.5}
                   textAnchor="middle"
-                  className="text-[11px] font-black fill-white pointer-events-none select-none"
+                  className="text-[10px] font-medium fill-white pointer-events-none select-none"
                 >
                   {fingerNum}
                 </text>
@@ -187,17 +187,17 @@ export const GuitarChordDiagram: React.FC<GuitarChordDiagramProps> = ({
         })}
       </svg>
 
-      <div className="mt-1 flex items-center gap-3 text-xs text-slate-400 font-medium">
+      <div className="mt-1 flex items-center gap-3 text-xs text-slate-400 font-light">
         <span className="flex items-center gap-1">
-          <span className="inline-block w-2.5 h-2.5 rounded-none bg-emerald-500/20 border border-emerald-500"></span>
+          <span className="inline-block w-2 h-2 rounded-none bg-emerald-500/20 border border-emerald-500/50"></span>
           <span>Solta</span>
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block text-[11px] font-black text-rose-500">✕</span>
+          <span className="inline-block text-[10px] font-normal text-rose-400/80">✕</span>
           <span>Muda</span>
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block w-2.5 h-2.5 rounded-none bg-indigo-600 text-white text-[8px] flex items-center justify-center font-bold">1</span>
+          <span className="inline-block w-2.5 h-2.5 rounded-none bg-indigo-600/85 text-white text-[8px] flex items-center justify-center font-normal">1</span>
           <span>Dedo</span>
         </span>
       </div>

@@ -1,0 +1,358 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" style="background:#0f1117;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <defs>
+    <linearGradient id="dActiveGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4f46e5"/>
+      <stop offset="100%" stop-color="#3730a3"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Top App Navigation Bar -->
+  <rect width="1920" height="74" fill="#131620" stroke="#1e2332" stroke-width="2"/>
+  <g transform="translate(40, 14)">
+    <rect width="46" height="46" rx="10" fill="url(#dActiveGrad)"/>
+    <circle cx="23" cy="23" r="12" fill="#ffffff"/>
+    <circle cx="23" cy="23" r="6" fill="#3730a3"/>
+    <text x="60" y="32" fill="#f8fafc" font-size="22" font-weight="700" letter-spacing="-0.5">PROGRESSÃO DE ACORDES</text>
+    <text x="350" y="32" fill="#64748b" font-size="16">|  Estúdio Harmônico, Escalas &amp; Melodias</text>
+  </g>
+
+  <!-- Top Controls (Genre, BPM, Instruments, Actions) -->
+  <g transform="translate(1050, 16)">
+    <!-- Genres -->
+    <rect x="0" y="0" width="90" height="42" rx="8" fill="#4f46e5"/>
+    <text x="45" y="26" fill="#fff" font-size="15" font-weight="600" text-anchor="middle">Rock</text>
+
+    <rect x="100" y="0" width="80" height="42" rx="8" fill="#1b2030"/>
+    <text x="140" y="26" fill="#94a3b8" font-size="15" text-anchor="middle">Pop</text>
+
+    <rect x="190" y="0" width="90" height="42" rx="8" fill="#1b2030"/>
+    <text x="235" y="26" fill="#94a3b8" font-size="15" text-anchor="middle">Ballad</text>
+
+    <!-- BPM -->
+    <rect x="300" y="0" width="130" height="42" rx="8" fill="#1b2030"/>
+    <text x="365" y="26" fill="#cbd5e1" font-size="15" text-anchor="middle">⏱️ 110 BPM</text>
+
+    <!-- Instrument Switcher -->
+    <rect x="445" y="0" width="150" height="42" rx="8" fill="#1b2030"/>
+    <text x="520" y="26" fill="#cbd5e1" font-size="15" text-anchor="middle">🎹 Piano / Violão</text>
+
+    <!-- Favorites / Presets Button -->
+    <rect x="610" y="0" width="110" height="42" rx="8" fill="#1e293b"/>
+    <text x="665" y="26" fill="#e2e8f0" font-size="14" font-weight="600" text-anchor="middle">★ Favoritos</text>
+
+    <!-- Play Button -->
+    <rect x="735" y="0" width="95" height="42" rx="8" fill="#10b981"/>
+    <text x="782" y="26" fill="#ffffff" font-size="15" font-weight="700" text-anchor="middle">▶ Tocar</text>
+  </g>
+
+  <!-- Main Container -->
+  <!-- 1. Timeline Card Strip -->
+  <g transform="translate(40, 100)">
+    <rect width="1840" height="210" rx="14" fill="#141722" stroke="#222636" stroke-width="2"/>
+    <text x="25" y="32" fill="#94a3b8" font-size="16" font-weight="700" letter-spacing="1">LINHA DO TEMPO DA PROGRESSÃO</text>
+    <text x="1815" y="32" fill="#64748b" font-size="14" text-anchor="end">Tom: C Maior • Compassos 4/4</text>
+
+    <!-- Chord 1: C (Active) -->
+    <g transform="translate(25, 48)">
+      <rect width="210" height="142" rx="10" fill="#1c2132" stroke="#6366f1" stroke-width="3"/>
+      <rect x="12" y="10" width="34" height="22" rx="4" fill="#4f46e5"/>
+      <text x="29" y="26" fill="#ffffff" font-size="13" font-weight="700" text-anchor="middle">I</text>
+      <text x="105" y="75" fill="#ffffff" font-size="44" font-weight="800" text-anchor="middle">C</text>
+      <text x="105" y="102" fill="#818cf8" font-size="15" text-anchor="middle">Dó Maior (Tônica)</text>
+      <text x="105" y="125" fill="#64748b" font-size="13" text-anchor="middle">C - E - G</text>
+    </g>
+
+    <!-- Chord 2: G -->
+    <g transform="translate(255, 48)">
+      <rect width="210" height="142" rx="10" fill="#171a26" stroke="#242938" stroke-width="1.5"/>
+      <rect x="12" y="10" width="34" height="22" rx="4" fill="#2d3748"/>
+      <text x="29" y="26" fill="#94a3b8" font-size="13" font-weight="700" text-anchor="middle">V</text>
+      <text x="105" y="75" fill="#f1f5f9" font-size="44" font-weight="800" text-anchor="middle">G</text>
+      <text x="105" y="102" fill="#94a3b8" font-size="15" text-anchor="middle">Sol Maior (Dominante)</text>
+      <text x="105" y="125" fill="#64748b" font-size="13" text-anchor="middle">G - B - D</text>
+    </g>
+
+    <!-- Chord 3: Am -->
+    <g transform="translate(485, 48)">
+      <rect width="210" height="142" rx="10" fill="#171a26" stroke="#242938" stroke-width="1.5"/>
+      <rect x="12" y="10" width="34" height="22" rx="4" fill="#2d3748"/>
+      <text x="29" y="26" fill="#94a3b8" font-size="13" font-weight="700" text-anchor="middle">vi</text>
+      <text x="105" y="75" fill="#f1f5f9" font-size="44" font-weight="800" text-anchor="middle">Am</text>
+      <text x="105" y="102" fill="#94a3b8" font-size="15" text-anchor="middle">Lá Menor (Relativa)</text>
+      <text x="105" y="125" fill="#64748b" font-size="13" text-anchor="middle">A - C - E</text>
+    </g>
+
+    <!-- Chord 4: F -->
+    <g transform="translate(715, 48)">
+      <rect width="210" height="142" rx="10" fill="#171a26" stroke="#242938" stroke-width="1.5"/>
+      <rect x="12" y="10" width="34" height="22" rx="4" fill="#2d3748"/>
+      <text x="29" y="26" fill="#94a3b8" font-size="13" font-weight="700" text-anchor="middle">IV</text>
+      <text x="105" y="75" fill="#f1f5f9" font-size="44" font-weight="800" text-anchor="middle">F</text>
+      <text x="105" y="102" fill="#94a3b8" font-size="15" text-anchor="middle">Fá Maior (Subdom.)</text>
+      <text x="105" y="125" fill="#64748b" font-size="13" text-anchor="middle">F - A - C</text>
+    </g>
+
+    <!-- Add Chord Button -->
+    <g transform="translate(945, 48)">
+      <rect width="130" height="142" rx="10" fill="#131622" stroke="#2a3044" stroke-width="1.5" stroke-dasharray="6,6"/>
+      <text x="65" y="70" fill="#64748b" font-size="36" text-anchor="middle">+</text>
+      <text x="65" y="98" fill="#64748b" font-size="14" text-anchor="middle">Adicionar</text>
+    </g>
+  </g>
+
+  <!-- 2. Next Chord Suggestions (Right below timeline) -->
+  <g transform="translate(40, 325)">
+    <rect width="1840" height="110" rx="12" fill="#131620" stroke="#212534" stroke-width="1.5"/>
+    <text x="25" y="30" fill="#f1f5f9" font-size="16" font-weight="700">✨ SUGESTÕES INTELIGENTES PARA O PRÓXIMO ACORDE</text>
+    <text x="490" y="30" fill="#64748b" font-size="14">(Harmonia funcional baseada no último acorde selecionado)</text>
+
+    <!-- Suggestions row -->
+    <g transform="translate(25, 45)">
+      <rect width="180" height="50" rx="8" fill="#1c202e" stroke="#333b52" stroke-width="1.5"/>
+      <text x="20" y="32" fill="#fff" font-size="20" font-weight="700">F</text>
+      <text x="45" y="24" fill="#38bdf8" font-size="12" font-weight="600">IV Subdominante</text>
+      <text x="45" y="40" fill="#94a3b8" font-size="12">Fá Maior (+)</text>
+
+      <rect x="200" width="180" height="50" rx="8" fill="#1c202e" stroke="#333b52" stroke-width="1.5"/>
+      <text x="220" y="32" fill="#fff" font-size="20" font-weight="700">G</text>
+      <text x="245" y="24" fill="#f59e0b" font-size="12" font-weight="600">V Dominante</text>
+      <text x="245" y="40" fill="#94a3b8" font-size="12">Sol Maior (+)</text>
+
+      <rect x="400" width="180" height="50" rx="8" fill="#1c202e" stroke="#333b52" stroke-width="1.5"/>
+      <text x="420" y="32" fill="#fff" font-size="20" font-weight="700">Am</text>
+      <text x="455" y="24" fill="#a855f7" font-size="12" font-weight="600">vi Relativa</text>
+      <text x="455" y="40" fill="#94a3b8" font-size="12">Lá Menor (+)</text>
+
+      <rect x="600" width="180" height="50" rx="8" fill="#1c202e" stroke="#333b52" stroke-width="1.5"/>
+      <text x="620" y="32" fill="#fff" font-size="20" font-weight="700">Dm</text>
+      <text x="655" y="24" fill="#38bdf8" font-size="12" font-weight="600">ii Subdominante</text>
+      <text x="655" y="40" fill="#94a3b8" font-size="12">Ré Menor (+)</text>
+
+      <rect x="800" width="180" height="50" rx="8" fill="#1c202e" stroke="#333b52" stroke-width="1.5"/>
+      <text x="820" y="32" fill="#fff" font-size="20" font-weight="700">Em</text>
+      <text x="855" y="24" fill="#64748b" font-size="12" font-weight="600">iii Mediante</text>
+      <text x="855" y="40" fill="#94a3b8" font-size="12">Mi Menor (+)</text>
+    </g>
+  </g>
+
+  <!-- 3. Lower Section: Left = Melody & Fretboard/Keyboard, Right = Chord Inspector -->
+  <!-- Left Panel: Scale & Melody Visualizer (1180px wide) -->
+  <g transform="translate(40, 450)">
+    <rect width="1180" height="600" rx="14" fill="#141724" stroke="#222738" stroke-width="2"/>
+    <text x="30" y="36" fill="#f1f5f9" font-size="18" font-weight="700">🎵 SUGESTÃO DE MELODIA ACOMPANHANTE &amp; ESCALA</text>
+    
+    <!-- Controls row -->
+    <g transform="translate(30, 52)">
+      <rect width="140" height="36" rx="6" fill="#4f46e5"/>
+      <text x="70" y="23" fill="#fff" font-size="14" font-weight="600" text-anchor="middle">Lírico</text>
+
+      <rect x="150" width="140" height="36" rx="6" fill="#1e2434"/>
+      <text x="220" y="23" fill="#94a3b8" font-size="14" text-anchor="middle">Riff</text>
+
+      <rect x="300" width="140" height="36" rx="6" fill="#1e2434"/>
+      <text x="370" y="23" fill="#94a3b8" font-size="14" text-anchor="middle">Arpejo</text>
+
+      <rect x="450" width="140" height="36" rx="6" fill="#1e2434"/>
+      <text x="520" y="23" fill="#94a3b8" font-size="14" text-anchor="middle">Blues</text>
+
+      <rect x="610" width="200" height="36" rx="6" fill="#242b3d"/>
+      <text x="710" y="23" fill="#cbd5e1" font-size="14" text-anchor="middle">🎸 Solo Violão / Guitarra</text>
+
+      <rect x="830" width="270" height="36" rx="6" fill="#10b981"/>
+      <text x="965" y="23" fill="#ffffff" font-size="14" font-weight="700" text-anchor="middle">▶ Tocar Melodia + Acordes</text>
+    </g>
+
+    <!-- Fretboard SVG -->
+    <g transform="translate(30, 105)">
+      <rect width="1120" height="240" rx="10" fill="#0f1118" stroke="#1f2434" stroke-width="2"/>
+      <text x="20" y="30" fill="#818cf8" font-size="15" font-weight="600">Visualizador no Braço da Guitarra / Violão (Notas da Escala C Maior)</text>
+      
+      <!-- Strings -->
+      <line x1="30" y1="65" x2="1080" y2="65" stroke="#475569" stroke-width="1.8"/>
+      <line x1="30" y1="100" x2="1080" y2="100" stroke="#475569" stroke-width="2.2"/>
+      <line x1="30" y1="135" x2="1080" y2="135" stroke="#475569" stroke-width="2.6"/>
+      <line x1="30" y1="170" x2="1080" y2="170" stroke="#475569" stroke-width="3"/>
+      <line x1="30" y1="205" x2="1080" y2="205" stroke="#475569" stroke-width="3.5"/>
+
+      <!-- Frets -->
+      <line x1="120" y1="50" x2="120" y2="220" stroke="#64748b" stroke-width="2.5"/>
+      <line x1="220" y1="50" x2="220" y2="220" stroke="#64748b" stroke-width="2.5"/>
+      <line x1="330" y1="50" x2="330" y2="220" stroke="#64748b" stroke-width="2.5"/>
+      <line x1="450" y1="50" x2="450" y2="220" stroke="#64748b" stroke-width="2.5"/>
+      <line x1="580" y1="50" x2="580" y2="220" stroke="#64748b" stroke-width="2.5"/>
+      <line x1="720" y1="50" x2="720" y2="220" stroke="#64748b" stroke-width="2.5"/>
+      <line x1="870" y1="50" x2="870" y2="220" stroke="#64748b" stroke-width="2.5"/>
+      <line x1="1020" y1="50" x2="1020" y2="220" stroke="#64748b" stroke-width="2.5"/>
+
+      <!-- Colored markers -->
+      <circle cx="330" cy="170" r="14" fill="#3b82f6"/>
+      <text x="330" y="175" fill="#ffffff" font-size="13" font-weight="700" text-anchor="middle">C</text>
+
+      <circle cx="120" cy="135" r="14" fill="#3b82f6"/>
+      <text x="120" y="140" fill="#ffffff" font-size="13" font-weight="700" text-anchor="middle">C</text>
+
+      <circle cx="220" cy="170" r="13" fill="#6366f1"/>
+      <text x="220" y="174" fill="#ffffff" font-size="12" font-weight="600" text-anchor="middle">E</text>
+
+      <circle cx="450" cy="100" r="13" fill="#6366f1"/>
+      <text x="450" y="104" fill="#ffffff" font-size="12" font-weight="600" text-anchor="middle">G</text>
+
+      <circle cx="580" cy="65" r="13" fill="#a855f7"/>
+      <text x="580" y="69" fill="#ffffff" font-size="12" font-weight="600" text-anchor="middle">A</text>
+
+      <circle cx="720" cy="135" r="13" fill="#10b981"/>
+      <text x="720" y="139" fill="#ffffff" font-size="12" font-weight="600" text-anchor="middle">D</text>
+
+      <circle cx="870" cy="100" r="14" fill="#3b82f6"/>
+      <text x="870" y="105" fill="#ffffff" font-size="13" font-weight="700" text-anchor="middle">C</text>
+    </g>
+
+    <!-- Piano keyboard representation -->
+    <g transform="translate(30, 365)">
+      <rect width="1120" height="210" rx="10" fill="#0f1118" stroke="#1f2434" stroke-width="2"/>
+      <text x="20" y="30" fill="#818cf8" font-size="15" font-weight="600">Visualizador no Teclado do Piano (Notas da Escala &amp; Melodia)</text>
+
+      <g transform="translate(40, 50)">
+        <!-- 2 octaves of keys -->
+        <!-- White keys -->
+        <rect x="0" y="0" width="65" height="135" fill="#3b82f6" stroke="#1e293b" stroke-width="2"/>
+        <text x="32" y="120" fill="#fff" font-size="15" font-weight="700" text-anchor="middle">C</text>
+
+        <rect x="67" y="0" width="65" height="135" fill="#f8fafc" stroke="#1e293b" stroke-width="2"/>
+        <text x="99" y="120" fill="#64748b" font-size="15" font-weight="600" text-anchor="middle">D</text>
+
+        <rect x="134" y="0" width="65" height="135" fill="#6366f1" stroke="#1e293b" stroke-width="2"/>
+        <text x="166" y="120" fill="#fff" font-size="15" font-weight="700" text-anchor="middle">E</text>
+
+        <rect x="201" y="0" width="65" height="135" fill="#f8fafc" stroke="#1e293b" stroke-width="2"/>
+        <text x="233" y="120" fill="#64748b" font-size="15" font-weight="600" text-anchor="middle">F</text>
+
+        <rect x="268" y="0" width="65" height="135" fill="#6366f1" stroke="#1e293b" stroke-width="2"/>
+        <text x="300" y="120" fill="#fff" font-size="15" font-weight="700" text-anchor="middle">G</text>
+
+        <rect x="335" y="0" width="65" height="135" fill="#a855f7" stroke="#1e293b" stroke-width="2"/>
+        <text x="367" y="120" fill="#fff" font-size="15" font-weight="700" text-anchor="middle">A</text>
+
+        <rect x="402" y="0" width="65" height="135" fill="#f8fafc" stroke="#1e293b" stroke-width="2"/>
+        <text x="434" y="120" fill="#64748b" font-size="15" font-weight="600" text-anchor="middle">B</text>
+
+        <!-- Octave 2 -->
+        <rect x="469" y="0" width="65" height="135" fill="#3b82f6" stroke="#1e293b" stroke-width="2"/>
+        <text x="501" y="120" fill="#fff" font-size="15" font-weight="700" text-anchor="middle">C</text>
+
+        <rect x="536" y="0" width="65" height="135" fill="#f8fafc" stroke="#1e293b" stroke-width="2"/>
+        <text x="568" y="120" fill="#64748b" font-size="15" font-weight="600" text-anchor="middle">D</text>
+
+        <rect x="603" y="0" width="65" height="135" fill="#6366f1" stroke="#1e293b" stroke-width="2"/>
+        <text x="635" y="120" fill="#fff" font-size="15" font-weight="700" text-anchor="middle">E</text>
+
+        <rect x="670" y="0" width="65" height="135" fill="#f8fafc" stroke="#1e293b" stroke-width="2"/>
+        <text x="702" y="120" fill="#64748b" font-size="15" font-weight="600" text-anchor="middle">F</text>
+
+        <rect x="737" y="0" width="65" height="135" fill="#6366f1" stroke="#1e293b" stroke-width="2"/>
+        <text x="769" y="120" fill="#fff" font-size="15" font-weight="700" text-anchor="middle">G</text>
+
+        <rect x="804" y="0" width="65" height="135" fill="#a855f7" stroke="#1e293b" stroke-width="2"/>
+        <text x="836" y="120" fill="#fff" font-size="15" font-weight="700" text-anchor="middle">A</text>
+
+        <rect x="871" y="0" width="65" height="135" fill="#f8fafc" stroke="#1e293b" stroke-width="2"/>
+        <text x="903" y="120" fill="#64748b" font-size="15" font-weight="600" text-anchor="middle">B</text>
+
+        <!-- Black keys -->
+        <rect x="44" y="0" width="42" height="85" rx="3" fill="#0b0f19"/>
+        <rect x="111" y="0" width="42" height="85" rx="3" fill="#0b0f19"/>
+        <rect x="245" y="0" width="42" height="85" rx="3" fill="#0b0f19"/>
+        <rect x="312" y="0" width="42" height="85" rx="3" fill="#0b0f19"/>
+        <rect x="379" y="0" width="42" height="85" rx="3" fill="#0b0f19"/>
+
+        <rect x="513" y="0" width="42" height="85" rx="3" fill="#0b0f19"/>
+        <rect x="580" y="0" width="42" height="85" rx="3" fill="#0b0f19"/>
+        <rect x="714" y="0" width="42" height="85" rx="3" fill="#0b0f19"/>
+        <rect x="781" y="0" width="42" height="85" rx="3" fill="#0b0f19"/>
+        <rect x="848" y="0" width="42" height="85" rx="3" fill="#0b0f19"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- Right Panel: Active Chord Inspector (640px wide) -->
+  <g transform="translate(1240, 450)">
+    <rect width="640" height="600" rx="14" fill="#141724" stroke="#222738" stroke-width="2"/>
+    <text x="25" y="36" fill="#f1f5f9" font-size="18" font-weight="700">🔍 DIAGRAMA DO ACORDE (C - Dó Maior)</text>
+    <text x="25" y="60" fill="#818cf8" font-size="14">Tônica: C • Terça: E • Quinta: G • Oitava: 0</text>
+
+    <!-- Guitar Diagram Box -->
+    <g transform="translate(25, 80)">
+      <rect width="285" height="490" rx="10" fill="#10131c" stroke="#1e2434" stroke-width="1.5"/>
+      <text x="142" y="35" fill="#cbd5e1" font-size="16" font-weight="600" text-anchor="middle">🎸 Braço do Violão</text>
+      
+      <!-- Nut -->
+      <line x1="50" y1="80" x2="235" y2="80" stroke="#f1f5f9" stroke-width="6"/>
+      <!-- 6 strings -->
+      <line x1="50" y1="80" x2="50" y2="400" stroke="#94a3b8" stroke-width="2"/>
+      <line x1="87" y1="80" x2="87" y2="400" stroke="#94a3b8" stroke-width="2"/>
+      <line x1="124" y1="80" x2="124" y2="400" stroke="#94a3b8" stroke-width="2"/>
+      <line x1="161" y1="80" x2="161" y2="400" stroke="#94a3b8" stroke-width="2"/>
+      <line x1="198" y1="80" x2="198" y2="400" stroke="#94a3b8" stroke-width="2"/>
+      <line x1="235" y1="80" x2="235" y2="400" stroke="#94a3b8" stroke-width="2"/>
+
+      <!-- Frets -->
+      <line x1="50" y1="145" x2="235" y2="145" stroke="#475569" stroke-width="2"/>
+      <line x1="50" y1="210" x2="235" y2="210" stroke="#475569" stroke-width="2"/>
+      <line x1="50" y1="275" x2="235" y2="275" stroke="#475569" stroke-width="2"/>
+      <line x1="50" y1="340" x2="235" y2="340" stroke="#475569" stroke-width="2"/>
+      <line x1="50" y1="400" x2="235" y2="400" stroke="#475569" stroke-width="2"/>
+
+      <!-- Dots -->
+      <text x="50" y="68" fill="#ef4444" font-size="18" text-anchor="middle">✕</text>
+      <circle cx="87" cy="242" r="15" fill="#3b82f6"/>
+      <text x="87" y="247" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">3</text>
+      <circle cx="124" cy="177" r="15" fill="#3b82f6"/>
+      <text x="124" y="182" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">2</text>
+      <text x="161" y="68" fill="#10b981" font-size="18" text-anchor="middle">◯</text>
+      <circle cx="198" cy="112" r="15" fill="#3b82f6"/>
+      <text x="198" y="117" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">1</text>
+      <text x="235" y="68" fill="#10b981" font-size="18" text-anchor="middle">◯</text>
+      <text x="142" y="450" fill="#64748b" font-size="14" text-anchor="middle">X 3 2 0 1 0</text>
+    </g>
+
+    <!-- Piano Diagram Box -->
+    <g transform="translate(330, 80)">
+      <rect width="285" height="490" rx="10" fill="#10131c" stroke="#1e2434" stroke-width="1.5"/>
+      <text x="142" y="35" fill="#cbd5e1" font-size="16" font-weight="600" text-anchor="middle">🎹 Teclado do Piano</text>
+
+      <!-- Mini keyboard -->
+      <g transform="translate(18, 90)">
+        <rect x="0" y="0" width="35" height="160" rx="3" fill="#3b82f6" stroke="#1e293b" stroke-width="2"/>
+        <text x="17" y="145" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">C</text>
+
+        <rect x="36" y="0" width="35" height="160" rx="3" fill="#f8fafc" stroke="#1e293b" stroke-width="2"/>
+        <rect x="72" y="0" width="35" height="160" rx="3" fill="#3b82f6" stroke="#1e293b" stroke-width="2"/>
+        <text x="89" y="145" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">E</text>
+
+        <rect x="108" y="0" width="35" height="160" rx="3" fill="#f8fafc" stroke="#1e293b" stroke-width="2"/>
+        <rect x="144" y="0" width="35" height="160" rx="3" fill="#3b82f6" stroke="#1e293b" stroke-width="2"/>
+        <text x="161" y="145" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">G</text>
+
+        <rect x="180" y="0" width="35" height="160" rx="3" fill="#f8fafc" stroke="#1e293b" stroke-width="2"/>
+        <rect x="216" y="0" width="35" height="160" rx="3" fill="#f8fafc" stroke="#1e293b" stroke-width="2"/>
+
+        <!-- Black keys -->
+        <rect x="24" y="0" width="24" height="100" rx="2" fill="#0f172a"/>
+        <rect x="60" y="0" width="24" height="100" rx="2" fill="#0f172a"/>
+        <rect x="132" y="0" width="24" height="100" rx="2" fill="#0f172a"/>
+        <rect x="168" y="0" width="24" height="100" rx="2" fill="#0f172a"/>
+        <rect x="204" y="0" width="24" height="100" rx="2" fill="#0f172a"/>
+      </g>
+
+      <text x="142" y="320" fill="#38bdf8" font-size="16" font-weight="600" text-anchor="middle">C4 • E4 • G4</text>
+      <text x="142" y="360" fill="#94a3b8" font-size="14" text-anchor="middle">Tríade Maior (1ª, 3ªM, 5ªJ)</text>
+
+      <!-- Octave Buttons -->
+      <rect x="40" y="410" width="95" height="40" rx="6" fill="#1e293b"/>
+      <text x="87" y="435" fill="#cbd5e1" font-size="14" text-anchor="middle">-1 Oitava</text>
+
+      <rect x="150" y="410" width="95" height="40" rx="6" fill="#1e293b"/>
+      <text x="197" y="435" fill="#cbd5e1" font-size="14" text-anchor="middle">+1 Oitava</text>
+    </g>
+  </g>
+</svg>

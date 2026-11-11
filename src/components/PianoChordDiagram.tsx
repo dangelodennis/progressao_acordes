@@ -75,7 +75,7 @@ export const PianoChordDiagram: React.FC<PianoChordDiagramProps> = ({
     <div id={`piano-diagram-${chord.id}`} className={`flex flex-col items-center select-none ${className}`}>
       {/* Keyboard wrapper */}
       <div
-        className="relative bg-[#12141a] p-2.5 rounded-none border border-[#2d3342] shadow-xl overflow-x-auto max-w-full"
+        className="relative bg-[#0d0f14] p-2 rounded-none border border-[#202534] shadow-xs overflow-x-auto max-w-full"
         style={{ minWidth: `${keyboardWidth + 20}px` }}
       >
         <div className="relative flex" style={{ width: `${keyboardWidth}px`, height: `${dimensions.whiteHeight}px` }}>
@@ -96,25 +96,25 @@ export const PianoChordDiagram: React.FC<PianoChordDiagramProps> = ({
                     height: `${dimensions.whiteHeight}px`,
                     left: `${k.whiteIndex * dimensions.whiteWidth}px`,
                   }}
-                  className={`absolute top-0 rounded-none border border-[#384050] transition-all duration-100 flex flex-col justify-end items-center pb-2 z-10 ${
+                  className={`absolute top-0 rounded-none border border-[#2d3345] transition-all duration-100 flex flex-col justify-end items-center pb-2 z-10 ${
                     isChordNote
                       ? isRoot
-                        ? 'bg-amber-400 text-slate-950 font-bold border-amber-500 shadow-inner'
-                        : 'bg-indigo-600 text-white font-bold border-indigo-400 shadow-inner'
-                      : 'bg-[#f1f5f9] hover:bg-white text-slate-700 active:bg-slate-300'
+                        ? 'bg-amber-400/90 text-slate-950 font-medium border-amber-500/70 shadow-xs'
+                        : 'bg-indigo-600/85 text-white font-medium border-indigo-500/70 shadow-xs'
+                      : 'bg-[#cbd5e1] hover:bg-[#e2e8f0] text-slate-600 active:bg-slate-400'
                   }`}
                   title={`${k.note} ${isRoot ? '(Tônica/Root)' : ''}`}
                 >
                   {isChordNote && (
                     <span
                       style={{ fontSize: dimensions.fontSize }}
-                      className={`font-black ${isRoot ? 'text-slate-950' : 'text-white'}`}
+                      className={`font-medium ${isRoot ? 'text-slate-950' : 'text-white'}`}
                     >
                       {k.noteName}
                     </span>
                   )}
                   {!isChordNote && (
-                    <span className="text-[9px] font-semibold text-slate-400 pointer-events-none">
+                    <span className="text-[9px] font-normal text-slate-500 pointer-events-none">
                       {k.noteName === 'C' ? k.note : ''}
                     </span>
                   )}
@@ -140,19 +140,19 @@ export const PianoChordDiagram: React.FC<PianoChordDiagramProps> = ({
                     height: `${dimensions.blackHeight}px`,
                     left: `${leftPos}px`,
                   }}
-                  className={`absolute top-0 rounded-none transition-all duration-100 flex flex-col justify-end items-center pb-1.5 z-20 border border-[#1e222b] ${
+                  className={`absolute top-0 rounded-none transition-all duration-100 flex flex-col justify-end items-center pb-1.5 z-20 border border-[#161922] ${
                     isChordNote
                       ? isRoot
-                        ? 'bg-amber-400 text-slate-950 font-black border-amber-300 shadow-md'
-                        : 'bg-indigo-500 text-white font-black border-indigo-300 shadow-md'
-                      : 'bg-[#181b22] hover:bg-[#282d38] text-white'
+                        ? 'bg-amber-400/90 text-slate-950 font-medium border-amber-300/70 shadow-xs'
+                        : 'bg-indigo-500/85 text-white font-medium border-indigo-400/70 shadow-xs'
+                      : 'bg-[#141720] hover:bg-[#202534] text-slate-300'
                   }`}
                   title={`${k.note} ${isRoot ? '(Tônica/Root)' : ''}`}
                 >
                   {isChordNote && (
                     <span
                       style={{ fontSize: dimensions.fontSize }}
-                      className={`font-black text-[9px] ${isRoot ? 'text-slate-950' : 'text-white'}`}
+                      className={`font-medium text-[9px] ${isRoot ? 'text-slate-950' : 'text-white'}`}
                     >
                       {k.noteName}
                     </span>
@@ -164,16 +164,16 @@ export const PianoChordDiagram: React.FC<PianoChordDiagramProps> = ({
       </div>
 
       {/* Legend & Octave range indicator */}
-      <div className="mt-2.5 flex flex-wrap items-center justify-center gap-4 text-xs text-slate-400">
+      <div className="mt-2.5 flex flex-wrap items-center justify-center gap-4 text-xs text-slate-400 font-light">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-3 rounded-none bg-amber-400 border border-amber-500"></span>
+          <span className="inline-block w-2.5 h-2.5 rounded-none bg-amber-400/80 border border-amber-500/50"></span>
           <span>Tônica ({rootNoteName})</span>
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-3 rounded-none bg-indigo-600 border border-indigo-400"></span>
+          <span className="inline-block w-2.5 h-2.5 rounded-none bg-indigo-600/80 border border-indigo-500/50"></span>
           <span>Notas do Acorde ({chord.noteNames.join(' - ')})</span>
         </span>
-        <span className="text-[11px] px-2 py-0.5 rounded-none bg-[#242834] border border-[#333a4a] text-indigo-300 font-semibold">
+        <span className="text-[10px] px-2 py-0.5 rounded-none bg-[#161922] border border-[#232836] text-slate-300 font-normal">
           Faixa: {baseStartOctave}ª e {baseStartOctave + 1}ª Oitava
         </span>
       </div>

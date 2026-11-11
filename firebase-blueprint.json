@@ -1,0 +1,100 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile document storing basic account metadata",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the owner"
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name"
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "User avatar photo URL"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update timestamp"
+        }
+      },
+      "required": ["userId", "email"]
+    },
+    "UserProgression": {
+      "title": "UserProgression",
+      "description": "Saved musical chord progression and synced melody state for a user",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the progression"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name or title given to the progression",
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "description": "User notes or description of the progression",
+          "maxLength": 500
+        },
+        "genre": {
+          "type": "string",
+          "description": "Music genre (rock, pop, ballad, blues, acoustic, jazz)"
+        },
+        "chords": {
+          "type": "array",
+          "description": "Array of chords in the progression"
+        },
+        "tempoBpm": {
+          "type": "number",
+          "description": "Tempo in Beats Per Minute (50 - 240)"
+        },
+        "instrument": {
+          "type": "string",
+          "description": "Primary instrument (piano or guitar)"
+        },
+        "melody": {
+          "type": "object",
+          "description": "Optional saved melody generator configuration and notes"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Server timestamp of creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Server timestamp of last update"
+        }
+      },
+      "required": ["id", "userId", "name", "genre", "chords", "tempoBpm", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile document isolated per UID"
+    },
+    "/users/{userId}/progressions/{progressionId}": {
+      "schema": "UserProgression",
+      "description": "User saved chord progressions subcollection synchronized across devices"
+    }
+  }
+}

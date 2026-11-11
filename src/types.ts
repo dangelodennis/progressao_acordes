@@ -1,4 +1,34 @@
-export type Genre = 'rock' | 'pop' | 'ballad' | 'blues' | 'acoustic' | 'jazz';
+export type Genre =
+  | 'rock'
+  | 'pop'
+  | 'ballad'
+  | 'blues'
+  | 'acoustic'
+  | 'jazz'
+  | 'electronic'
+  | 'techno'
+  | 'punk';
+
+export type BackingTrackStyle =
+  | 'none'
+  | 'rock'
+  | 'funk'
+  | 'reggae'
+  | 'shuffle'
+  | 'disco'
+  | 'bossa'
+  | 'punk'
+  | 'techno';
+
+export interface BackingTrackOption {
+  id: BackingTrackStyle;
+  name: string;
+  genreTag: string;
+  icon: string;
+  description: string;
+  drumPatternDescription: string;
+  bassPatternDescription: string;
+}
 
 export type InstrumentType = 'piano' | 'guitar';
 
@@ -9,7 +39,9 @@ export interface ChordDefinition {
   name: string; // e.g. "C", "Am", "G7", "Fmaj7"
   root: string; // "C", "D", "E", etc.
   quality: 'major' | 'minor' | '7' | 'maj7' | 'm7' | 'sus2' | 'sus4' | 'add9' | 'dim' | 'aug' | '5';
-  symbol: string; // "C", "Am", "G7"
+  symbol: string; // "C", "Am", "G7", "C/E", "C/G"
+  bassNote?: string; // e.g. "E" for C/E, "G" for C/G
+  inversion?: number; // 0: Root position, 1: 1st inversion (3rd in bass), 2: 2nd inversion (5th in bass), 3: 3rd inversion (7th in bass)
   degree?: string; // "I", "ii", "IV", "V", "vi" relative to current key
   notes: string[]; // e.g. ["C4", "E4", "G4"]
   noteNames: string[]; // e.g. ["C", "E", "G"]
@@ -44,12 +76,21 @@ export interface ChordDefinition {
   };
 }
 
+export type ChordRhythmPattern =
+  | 'whole' // Sustenido por 1 compasso inteiro (padrão)
+  | 'quarters' // 4 batidas por compasso (semínimas: 1, 2, 3, 4)
+  | 'eighths' // 8 batidas por compasso (colcheias constantes: 1 & 2 & 3 & 4 &)
+  | 'syncopated' // Sincopado Pop/Groove (1, e-do-2, 4)
+  | 'arpeggio' // Arpejo ascendente nota por nota
+  | 'waltz' // Valsa / Balada (Baixo no 1, acorde no 2 e 3);
+
 export interface TimelineChordItem {
   id: string;
   chord: ChordDefinition;
   durationBeats: number; // usually 4 beats (1 measure) or 2 beats
   genreContext?: Genre;
   octaveOffset?: number; // e.g. -2, -1, 0, +1, +2 (default 0)
+  rhythmPattern?: ChordRhythmPattern; // Rhythm strumming/playing pattern
 }
 
 export interface ChordSuggestion {
@@ -59,6 +100,19 @@ export interface ChordSuggestion {
   genreMatch: Genre[];
   score: number; // 0 - 100 recommendation weight
   moodDescription: string;
+}
+
+export interface SavedMelodyConfig {
+  id?: string;
+  name: string;
+  style: MelodyStyle;
+  instrument: InstrumentType;
+  octaveOffset: number;
+  variationSeed: number;
+  notes: MelodyNote[];
+  totalBeats: number;
+  tags?: string[];
+  scaleType?: string;
 }
 
 export interface SavedProgression {
@@ -71,4 +125,30 @@ export interface SavedProgression {
   instrument: InstrumentType;
   createdAt: number;
   isPreset?: boolean;
+  melody?: SavedMelodyConfig;
+}
+
+export type MelodyStyle = 'lyrical' | 'riff' | 'arpeggio' | 'blues' | 'ambient';
+
+export interface MelodyNote {
+  id: string;
+  note: string; // e.g. "C4", "E4", "G4"
+  noteName: string; // e.g. "C", "E", "G"
+  octave: number; // e.g. 4
+  midi: number;
+  durationBeats: number; // 0.5 (8th), 1 (quarter), 1.5, 2 (half)
+  startBeat: number; // beat position in the sequence (0, 1, 2...)
+  chordIndex: number; // which chord measure in the timeline this note belongs to
+  role: 'root' | 'third' | 'fifth' | 'seventh' | 'passing' | 'accent';
+  degree?: string; // e.g. "T", "3ª", "5ª", "7ª", "2ª", "4ª", "6ª"
+}
+
+export interface MelodySuggestion {
+  id: string;
+  name: string;
+  description: string;
+  style: MelodyStyle;
+  notes: MelodyNote[];
+  totalBeats: number;
+  tags: string[];
 }

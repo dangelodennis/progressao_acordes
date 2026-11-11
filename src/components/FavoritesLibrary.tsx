@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SavedProgression, Genre } from '../types';
+import { SavedProgression, Genre, SavedMelodyConfig, TimelineChordItem } from '../types';
 import { audioEngine } from '../utils/audioPlayer';
 import {
   Bookmark,
@@ -9,8 +9,20 @@ import {
   FolderHeart,
   ArrowRight,
   X,
+  Music,
+  Download,
 } from 'lucide-react';
-import { getGenreLabel } from '../data/musicTheory';
+import { getGenreLabel, CHORD_DATABASE } from '../data/musicTheory';
+import { ChordDefinition } from '../types';
+
+function resolveChordItem(c: any): ChordDefinition | null {
+  if (!c) return null;
+  if (typeof c === 'string') return CHORD_DATABASE[c] || null;
+  if (c.symbol && c.notes) return c as ChordDefinition;
+  if (c.name && CHORD_DATABASE[c.name]) return CHORD_DATABASE[c.name];
+  if (c.symbol && CHORD_DATABASE[c.symbol]) return CHORD_DATABASE[c.symbol];
+  return null;
+}
 
 interface FavoritesLibraryProps {
   isOpen: boolean;
@@ -19,6 +31,7 @@ interface FavoritesLibraryProps {
   onLoadProgression: (prog: SavedProgression) => void;
   onDeleteProgression: (id: string) => void;
   activeGenre: Genre;
+  onExportMidi?: (prog: SavedProgression) => void;
 }
 
 export const FavoritesLibrary: React.FC<FavoritesLibraryProps> = ({
@@ -27,6 +40,7 @@ export const FavoritesLibrary: React.FC<FavoritesLibraryProps> = ({
   savedProgressions,
   onLoadProgression,
   onDeleteProgression,
+  onExportMidi,
 }) => {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [filterGenre, setFilterGenre] = useState<string>('all');
@@ -40,30 +54,49 @@ export const FavoritesLibrary: React.FC<FavoritesLibraryProps> = ({
 
   const handlePlayProgression = (prog: SavedProgression) => {
     if (playingId === prog.id) {
-      audioEngine.stopSequence();
+      audioEngine.stopAll();
       setPlayingId(null);
     } else {
+      audioEngine.stopAll();
       setPlayingId(prog.id);
-      const items = prog.chords.map((c, idx) => ({
+      const rawChords = Array.isArray(prog.chords) ? prog.chords : [];
+      const validChords = rawChords.map(resolveChordItem).filter((c): c is ChordDefinition => c !== null);
+      const items: TimelineChordItem[] = validChords.map((c, idx) => ({
         id: `prev-${prog.id}-${idx}`,
         chord: c,
         durationBeats: 4,
+        genreContext: prog.genre,
         octaveOffset: 0,
       }));
-      audioEngine.playSequence(
-        items,
-        prog.tempoBpm || 110,
-        prog.instrument || 'piano',
-        false,
-        () => {},
-        () => setPlayingId(null),
-        0
-      );
+
+      if (prog.melody && prog.melody.notes && prog.melody.notes.length > 0) {
+        audioEngine.playMelodyWithChords(
+          prog.melody.notes,
+          items,
+          prog.tempoBpm || 110,
+          prog.melody.instrument || 'guitar',
+          prog.instrument || 'piano',
+          () => {},
+          () => setPlayingId(null),
+          prog.melody.octaveOffset || 0,
+          0
+        );
+      } else {
+        audioEngine.playSequence(
+          items,
+          prog.tempoBpm || 110,
+          prog.instrument || 'piano',
+          false,
+          () => {},
+          () => setPlayingId(null),
+          0
+        );
+      }
     }
   };
 
   const handleLoad = (prog: SavedProgression) => {
-    audioEngine.stopSequence();
+    audioEngine.stopAll();
     setPlayingId(null);
     onLoadProgression(prog);
     onClose();
@@ -73,19 +106,19 @@ export const FavoritesLibrary: React.FC<FavoritesLibraryProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-150">
       <div
         id="favorites-library-modal"
-        className="bg-[#1a1d26] border border-[#384052] w-full max-w-2xl rounded-none p-5 shadow-2xl max-h-[90vh] flex flex-col"
+        className="bg-[#12151d] border border-[#232836] w-full max-w-2xl rounded-none p-4 md:p-5 shadow-2xl max-h-[90vh] flex flex-col"
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-[#2d3342]">
+        <div className="flex items-center justify-between pb-3 border-b border-[#202534]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-none bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center font-bold">
-              <FolderHeart className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-none bg-[#181c28] border border-[#252c40] text-amber-400/80 flex items-center justify-center font-normal">
+              <FolderHeart className="w-3.5 h-3.5" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-white">
+              <h3 className="text-sm font-medium text-slate-200">
                 Biblioteca de Favoritos
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-400 font-light">
                 Suas progressões salvas e modelos harmônicos para consulta rápida
               </p>
             </div>
@@ -99,21 +132,21 @@ export const FavoritesLibrary: React.FC<FavoritesLibraryProps> = ({
               setPlayingId(null);
               onClose();
             }}
-            className="p-1.5 rounded-none bg-[#242834] hover:bg-[#2c3242] text-slate-300 border border-[#384050] transition-colors"
+            className="p-1 rounded-none bg-[#181c26] hover:bg-[#202534] text-slate-400 hover:text-slate-200 border border-[#252a3a] transition-colors"
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 py-3 overflow-x-auto text-xs">
+        <div className="flex items-center gap-1.5 py-2.5 overflow-x-auto text-xs">
           <button
             type="button"
             onClick={() => setFilterGenre('all')}
-            className={`px-3 py-1 text-xs font-black rounded-none border transition-all ${
+            className={`px-2.5 py-1 text-xs font-normal rounded-none border transition-all ${
               filterGenre === 'all'
-                ? 'bg-indigo-600 text-white border-indigo-400 shadow-xs'
-                : 'bg-[#202430] hover:bg-[#282d3b] text-slate-300 border-[#313747]'
+                ? 'bg-[#222838] text-slate-100 border-indigo-500/60 shadow-xs'
+                : 'bg-[#161922] hover:bg-[#1d222e] text-slate-400 border-[#232836]'
             }`}
           >
             Todas ({savedProgressions.length})
@@ -121,10 +154,10 @@ export const FavoritesLibrary: React.FC<FavoritesLibraryProps> = ({
           <button
             type="button"
             onClick={() => setFilterGenre('rock')}
-            className={`px-3 py-1 text-xs font-black rounded-none border transition-all ${
+            className={`px-2.5 py-1 text-xs font-normal rounded-none border transition-all ${
               filterGenre === 'rock'
-                ? 'bg-rose-600 text-white border-rose-400 shadow-xs'
-                : 'bg-[#202430] hover:bg-[#282d3b] text-slate-300 border-[#313747]'
+                ? 'bg-[#222838] text-slate-100 border-rose-500/60 shadow-xs'
+                : 'bg-[#161922] hover:bg-[#1d222e] text-slate-400 border-[#232836]'
             }`}
           >
             🎸 Rock
@@ -132,31 +165,86 @@ export const FavoritesLibrary: React.FC<FavoritesLibraryProps> = ({
           <button
             type="button"
             onClick={() => setFilterGenre('pop')}
-            className={`px-3 py-1 text-xs font-black rounded-none border transition-all ${
+            className={`px-2.5 py-1 text-xs font-normal rounded-none border transition-all ${
               filterGenre === 'pop'
-                ? 'bg-indigo-600 text-white border-indigo-400 shadow-xs'
-                : 'bg-[#202430] hover:bg-[#282d3b] text-slate-300 border-[#313747]'
+                ? 'bg-[#222838] text-slate-100 border-indigo-500/60 shadow-xs'
+                : 'bg-[#161922] hover:bg-[#1d222e] text-slate-400 border-[#232836]'
             }`}
           >
             ✨ Pop
           </button>
           <button
             type="button"
+            onClick={() => setFilterGenre('electronic')}
+            className={`px-2.5 py-1 text-xs font-normal rounded-none border transition-all ${
+              filterGenre === 'electronic'
+                ? 'bg-[#222838] text-slate-100 border-cyan-500/60 shadow-xs'
+                : 'bg-[#161922] hover:bg-[#1d222e] text-slate-400 border-[#232836]'
+            }`}
+          >
+            ⚡ Eletrônica
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterGenre('techno')}
+            className={`px-2.5 py-1 text-xs font-normal rounded-none border transition-all ${
+              filterGenre === 'techno'
+                ? 'bg-[#222838] text-slate-100 border-purple-500/60 shadow-xs'
+                : 'bg-[#161922] hover:bg-[#1d222e] text-slate-400 border-[#232836]'
+            }`}
+          >
+            🎛️ Techno
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterGenre('punk')}
+            className={`px-2.5 py-1 text-xs font-normal rounded-none border transition-all ${
+              filterGenre === 'punk'
+                ? 'bg-[#222838] text-slate-100 border-red-500/60 shadow-xs'
+                : 'bg-[#161922] hover:bg-[#1d222e] text-slate-400 border-[#232836]'
+            }`}
+          >
+            💥 Punk
+          </button>
+          <button
+            type="button"
             onClick={() => setFilterGenre('ballad')}
-            className={`px-3 py-1 text-xs font-black rounded-none border transition-all ${
+            className={`px-2.5 py-1 text-xs font-normal rounded-none border transition-all ${
               filterGenre === 'ballad'
-                ? 'bg-amber-600 text-white border-amber-400 shadow-xs'
-                : 'bg-[#202430] hover:bg-[#282d3b] text-slate-300 border-[#313747]'
+                ? 'bg-[#222838] text-slate-100 border-amber-500/60 shadow-xs'
+                : 'bg-[#161922] hover:bg-[#1d222e] text-slate-400 border-[#232836]'
             }`}
           >
             🌙 Ballad
           </button>
+          <button
+            type="button"
+            onClick={() => setFilterGenre('acoustic')}
+            className={`px-2.5 py-1 text-xs font-normal rounded-none border transition-all ${
+              filterGenre === 'acoustic'
+                ? 'bg-[#222838] text-slate-100 border-emerald-500/60 shadow-xs'
+                : 'bg-[#161922] hover:bg-[#1d222e] text-slate-400 border-[#232836]'
+            }`}
+          >
+            🪕 Acústico
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterGenre('jazz')}
+            className={`px-2.5 py-1 text-xs font-normal rounded-none border transition-all ${
+              filterGenre === 'jazz'
+                ? 'bg-[#222838] text-slate-100 border-blue-500/60 shadow-xs'
+                : 'bg-[#161922] hover:bg-[#1d222e] text-slate-400 border-[#232836]'
+            }`}
+          >
+            🎷 Jazz
+          </button>
         </div>
 
         {/* Progression List */}
-        <div className="flex-1 overflow-y-auto space-y-3 pr-1 py-1">
+        <div className="flex-1 overflow-y-auto space-y-2 pr-1 py-1">
           {filtered.length === 0 ? (
-            <div className="py-12 text-center text-slate-400 text-xs">
+            <div className="py-12 text-center text-slate-400 font-light text-xs">
               Nenhuma progressão encontrada nesta categoria.
             </div>
           ) : (
@@ -167,30 +255,30 @@ export const FavoritesLibrary: React.FC<FavoritesLibraryProps> = ({
                 <div
                   key={prog.id}
                   id={`fav-item-${prog.id}`}
-                  className={`p-4 rounded-none border transition-all ${
+                  className={`p-3 rounded-none border transition-all ${
                     isCurrentlyPlaying
-                      ? 'bg-[#242836] border-indigo-500 shadow-md ring-1 ring-indigo-500'
-                      : 'bg-[#202430] hover:bg-[#252a38] border-[#2e3444]'
+                      ? 'bg-[#1b202c] border-indigo-500/60 shadow-xs'
+                      : 'bg-[#161922] hover:bg-[#1b202c] border-[#232836]'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="font-extrabold text-sm text-white">
+                        <h4 className="font-medium text-xs text-slate-200">
                           {prog.name}
                         </h4>
-                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded-none bg-[#181b24] text-indigo-300 border border-[#384050] uppercase">
+                        <span className="text-[9px] font-normal px-1.5 py-0.5 rounded-none bg-[#12141a] text-slate-400 border border-[#222736] uppercase">
                           {getGenreLabel(prog.genre)}
                         </span>
                         {prog.isPreset && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-none bg-amber-950/60 text-amber-300 border border-amber-500/40">
+                          <span className="text-[9px] font-normal px-1.5 py-0.5 rounded-none bg-amber-950/30 text-amber-400 border border-amber-500/30">
                             Modelo
                           </span>
                         )}
                       </div>
 
                       {prog.description && (
-                        <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">
+                        <p className="text-xs text-slate-400 font-light mt-0.5 line-clamp-1">
                           {prog.description}
                         </p>
                       )}
@@ -201,56 +289,88 @@ export const FavoritesLibrary: React.FC<FavoritesLibraryProps> = ({
                       <button
                         type="button"
                         onClick={() => handlePlayProgression(prog)}
-                        className={`p-2 rounded-none text-xs font-bold border transition-all active:translate-y-0.5 ${
+                        className={`p-1.5 rounded-none text-xs font-normal border transition-all active:translate-y-0.5 ${
                           isCurrentlyPlaying
-                            ? 'bg-amber-500 text-black border-amber-400'
-                            : 'bg-[#282d3c] hover:bg-[#333a4d] text-slate-200 border-[#384050]'
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                            : 'bg-[#1a1e28] hover:bg-[#222836] text-slate-300 border-[#272d3e]'
                         }`}
                         title={isCurrentlyPlaying ? 'Pausar' : 'Tocar Prévia'}
                       >
                         {isCurrentlyPlaying ? (
-                          <Pause className="w-3.5 h-3.5 fill-current" />
+                          <Pause className="w-3 h-3 fill-current" />
                         ) : (
-                          <Play className="w-3.5 h-3.5 fill-current" />
+                          <Play className="w-3 h-3 fill-current" />
                         )}
                       </button>
 
                       <button
                         type="button"
                         onClick={() => handleLoad(prog)}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-none bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold border border-indigo-400 transition-all active:translate-y-0.5"
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-none bg-indigo-600/80 hover:bg-indigo-500/80 text-white text-xs font-normal border border-indigo-500/50 transition-all active:translate-y-0.5"
                       >
                         <span>Carregar</span>
                         <ArrowRight className="w-3 h-3" />
                       </button>
 
+                      {onExportMidi && (
+                        <button
+                          type="button"
+                          onClick={() => onExportMidi(prog)}
+                          className="p-1.5 rounded-none bg-indigo-950/30 hover:bg-indigo-900/40 text-indigo-300 border border-indigo-700/40 text-xs transition-colors"
+                          title="Exportar esta progressão em MIDI (.mid)"
+                        >
+                          <Download className="w-3 h-3" />
+                        </button>
+                      )}
+
                       {!prog.isPreset && (
                         <button
                           type="button"
                           onClick={() => onDeleteProgression(prog.id)}
-                          className="p-1.5 rounded-none bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 text-xs transition-colors"
+                          className="p-1 rounded-none bg-rose-950/20 hover:bg-rose-900/40 text-rose-300 border border-rose-800/40 text-xs transition-colors"
                           title="Excluir"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-3 h-3" />
                         </button>
                       )}
                     </div>
                   </div>
 
                   {/* Chord sequence badges preview */}
-                  <div className="flex items-center gap-1.5 mt-3 flex-wrap">
-                    {prog.chords.map((chord, cIdx) => (
-                      <span
-                        key={`${prog.id}-c-${cIdx}`}
-                        className="px-2 py-0.5 rounded-none bg-[#181b24] font-black text-xs text-indigo-300 border border-[#384050]"
-                      >
-                        {chord.symbol}
-                      </span>
-                    ))}
-                    <span className="text-[11px] text-slate-400 font-medium ml-2">
+                  <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+                    {Array.isArray(prog.chords) &&
+                      prog.chords.map((chord, cIdx) => {
+                        const resolved = resolveChordItem(chord);
+                        const symbol =
+                          resolved?.symbol ||
+                          (typeof chord === 'string' ? chord : (chord as any)?.name || (chord as any)?.symbol || '?');
+                        return (
+                          <span
+                            key={`${prog.id}-c-${cIdx}`}
+                            className="px-1.5 py-0.5 rounded-none bg-[#12141a] font-normal text-xs text-slate-300 border border-[#222736]"
+                          >
+                            {symbol}
+                          </span>
+                        );
+                      })}
+                    <span className="text-[10px] text-slate-400 font-light ml-1.5">
                       {prog.tempoBpm} BPM • {prog.instrument === 'guitar' ? '🎸 Violão' : '🎹 Piano'}
                     </span>
                   </div>
+
+                  {/* Melody indication if attached */}
+                  {prog.melody && (
+                    <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-[#1e2330] text-[11px] text-indigo-300/90 font-light">
+                      <Music className="w-3 h-3 text-indigo-400 shrink-0" />
+                      <span>
+                        Melodia salva:{' '}
+                        <strong className="font-normal text-slate-200">
+                          {prog.melody.name}
+                        </strong>{' '}
+                        ({prog.melody.instrument === 'guitar' ? '🎸 Violão' : '🎹 Piano'})
+                      </span>
+                    </div>
+                  )}
                 </div>
               );
             })
@@ -265,8 +385,9 @@ export const FavoritesLibrary: React.FC<FavoritesLibraryProps> = ({
 interface SaveProgressionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (name: string, description: string) => void;
+  onSave: (name: string, description: string, includeMelody: boolean) => void;
   defaultName: string;
+  currentMelody?: SavedMelodyConfig | null;
 }
 
 export const SaveProgressionModal: React.FC<SaveProgressionModalProps> = ({
@@ -274,41 +395,43 @@ export const SaveProgressionModal: React.FC<SaveProgressionModalProps> = ({
   onClose,
   onSave,
   defaultName,
+  currentMelody,
 }) => {
   const [name, setName] = useState(defaultName);
   const [description, setDescription] = useState('');
+  const [includeMelody, setIncludeMelody] = useState(true);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    onSave(name.trim(), description.trim());
+    onSave(name.trim(), description.trim(), includeMelody);
     onClose();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-[#1a1d26] border border-[#384052] w-full max-w-md rounded-none p-5 shadow-2xl">
-        <div className="flex items-center justify-between pb-3 border-b border-[#2d3342]">
+      <div className="bg-[#12151d] border border-[#232836] w-full max-w-md rounded-none p-4 md:p-5 shadow-2xl">
+        <div className="flex items-center justify-between pb-3 border-b border-[#202534]">
           <div className="flex items-center gap-2">
-            <Bookmark className="w-5 h-5 text-indigo-400" />
-            <h3 className="text-base font-extrabold text-white">
+            <Bookmark className="w-4 h-4 text-indigo-400/80" />
+            <h3 className="text-sm font-medium text-slate-200">
               Salvar em Favoritos
             </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-none text-slate-400 hover:text-white"
+            className="p-1 rounded-none text-slate-400 hover:text-slate-200"
           >
             ✕
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+        <form onSubmit={handleSubmit} className="space-y-3 pt-3">
           <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1">
+            <label className="block text-xs font-normal text-slate-300 mb-1">
               Nome da Progressão *
             </label>
             <input
@@ -318,12 +441,12 @@ export const SaveProgressionModal: React.FC<SaveProgressionModalProps> = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Ex: Minha Balada Romântica em Dó"
-              className="w-full px-3 py-2 text-xs rounded-none bg-[#13151c] border border-[#2e3444] text-white focus:border-indigo-500 outline-none font-bold"
+              className="w-full px-3 py-1.5 text-xs rounded-none bg-[#0f1117] border border-[#222736] text-slate-200 focus:border-indigo-500/60 outline-none font-normal"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1">
+            <label className="block text-xs font-normal text-slate-300 mb-1">
               Descrição / Notas (Opcional)
             </label>
             <textarea
@@ -332,22 +455,52 @@ export const SaveProgressionModal: React.FC<SaveProgressionModalProps> = ({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Ex: Refrão com violão de dedo e solo em escala menor..."
-              className="w-full px-3 py-2 text-xs rounded-none bg-[#13151c] border border-[#2e3444] text-white focus:border-indigo-500 outline-none"
+              className="w-full px-3 py-1.5 text-xs rounded-none bg-[#0f1117] border border-[#222736] text-slate-200 focus:border-indigo-500/60 outline-none font-light"
             />
           </div>
+
+          {/* Melody information and toggle */}
+          {currentMelody && (
+            <div className="p-2.5 rounded-none bg-[#0e1017] border border-[#202534] space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs text-slate-300 font-normal">
+                  <Music className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Salvar melodia junto</span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeMelody}
+                    onChange={(e) => setIncludeMelody(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-7 h-4 bg-[#1f2432] peer-focus:outline-none rounded-none peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-none after:h-3 after:w-3 after:transition-all peer-checked:bg-indigo-600"></div>
+                </label>
+              </div>
+              <div className="text-[11px] text-slate-400 font-light flex items-center justify-between">
+                <span className="text-slate-300 truncate max-w-[220px]">
+                  {currentMelody.name}
+                </span>
+                <span className="text-[10px] text-slate-500 uppercase shrink-0">
+                  {currentMelody.instrument === 'guitar' ? '🎸 Violão' : '🎹 Piano'} •{' '}
+                  {currentMelody.notes.length} notas
+                </span>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-none text-xs font-bold text-slate-400 hover:text-slate-200 border border-transparent"
+              className="px-3 py-1.5 rounded-none text-xs font-normal text-slate-400 hover:text-slate-200 border border-transparent"
             >
               Cancelar
             </button>
             <button
               id="btn-confirm-save-progression"
               type="submit"
-              className="px-4 py-2 rounded-none text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400 shadow-sm"
+              className="px-3 py-1.5 rounded-none text-xs font-normal bg-indigo-600/80 hover:bg-indigo-500/80 text-white border border-indigo-500/50 shadow-xs"
             >
               Salvar na Biblioteca
             </button>
