@@ -29,6 +29,18 @@ export function sanitizeProgressionChords(chords: any[]): ChordDefinition[] {
     .filter((c): c is ChordDefinition => c !== null);
 }
 
+export function formatProgressionDateTime(timestamp?: number): string {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  if (isNaN(date.getTime())) return '';
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${day}/${month}/${year} às ${hours}:${minutes}`;
+}
+
 // Combine default presets
 export const ALL_PRESETS: SavedProgression[] = [
   ...GENRE_PRESETS.pop,
@@ -107,6 +119,13 @@ export function useSyncProgressions(user: User | null) {
             createdAt = data.createdAt;
           }
 
+          let updatedAt: number | undefined = undefined;
+          if (data.updatedAt instanceof Timestamp) {
+            updatedAt = data.updatedAt.toMillis();
+          } else if (typeof data.updatedAt === 'number') {
+            updatedAt = data.updatedAt;
+          }
+
           remoteList.push({
             id: data.id || docSnap.id,
             name: data.name,
@@ -116,13 +135,17 @@ export function useSyncProgressions(user: User | null) {
             tempoBpm: data.tempoBpm || 110,
             instrument: data.instrument || 'piano',
             createdAt,
+            updatedAt,
             isPreset: false,
             melody: data.melody || undefined,
           });
         });
 
-        // Sort descending by date
-        remoteList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        // Sort descending by latest update or creation date
+        remoteList.sort(
+          (a, b) =>
+            ((b.updatedAt || b.createdAt) || 0) - ((a.updatedAt || a.createdAt) || 0)
+        );
 
         // Save backup in local storage
         try {
@@ -172,19 +195,23 @@ export function useSyncProgressions(user: User | null) {
         const path = `users/${user.uid}/progressions/${newProg.id}`;
         try {
           const docRef = doc(db, 'users', user.uid, 'progressions', newProg.id);
-          await setDoc(docRef, {
-            id: newProg.id,
-            userId: user.uid,
-            name: newProg.name,
-            description: newProg.description || '',
-            genre: newProg.genre,
-            chords: newProg.chords,
-            tempoBpm: newProg.tempoBpm,
-            instrument: newProg.instrument,
-            melody: newProg.melody || null,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          });
+          await setDoc(
+            docRef,
+            {
+              id: newProg.id,
+              userId: user.uid,
+              name: newProg.name,
+              description: newProg.description || '',
+              genre: newProg.genre,
+              chords: newProg.chords,
+              tempoBpm: newProg.tempoBpm,
+              instrument: newProg.instrument,
+              melody: newProg.melody || null,
+              createdAt: newProg.createdAt ? new Date(newProg.createdAt) : serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
           setIsSyncing(false);
           setSyncStatus('synced');
           setLastSyncTime(new Date());

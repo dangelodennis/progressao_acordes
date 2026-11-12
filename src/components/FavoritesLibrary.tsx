@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { SavedProgression, Genre, SavedMelodyConfig, TimelineChordItem } from '../types';
 import { audioEngine } from '../utils/audioPlayer';
 import {
@@ -11,9 +11,14 @@ import {
   X,
   Music,
   Download,
+  Clock,
+  AlertTriangle,
+  RefreshCw,
+  Check,
 } from 'lucide-react';
 import { getGenreLabel, CHORD_DATABASE } from '../data/musicTheory';
 import { ChordDefinition } from '../types';
+import { formatProgressionDateTime } from '../utils/useSyncProgressions';
 
 function resolveChordItem(c: any): ChordDefinition | null {
   if (!c) return null;
@@ -32,6 +37,8 @@ interface FavoritesLibraryProps {
   onDeleteProgression: (id: string) => void;
   activeGenre: Genre;
   onExportMidi?: (prog: SavedProgression) => void;
+  currentTimelineLength?: number;
+  onOverwriteProgression?: (prog: SavedProgression) => void;
 }
 
 export const FavoritesLibrary: React.FC<FavoritesLibraryProps> = ({
@@ -41,9 +48,12 @@ export const FavoritesLibrary: React.FC<FavoritesLibraryProps> = ({
   onLoadProgression,
   onDeleteProgression,
   onExportMidi,
+  currentTimelineLength = 0,
+  onOverwriteProgression,
 }) => {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [filterGenre, setFilterGenre] = useState<string>('all');
+  const [confirmOverwriteId, setConfirmOverwriteId] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -282,10 +292,27 @@ export const FavoritesLibrary: React.FC<FavoritesLibraryProps> = ({
                           {prog.description}
                         </p>
                       )}
+
+                      {/* Date & Time saved / updated */}
+                      <div className="flex items-center gap-1.5 mt-1.5 text-[11px] text-slate-400 font-light flex-wrap">
+                        <Clock className="w-3 h-3 text-slate-500 shrink-0" />
+                        <span>
+                          {prog.isPreset
+                            ? 'Modelo padrão Harmoniq'
+                            : prog.updatedAt && prog.updatedAt > (prog.createdAt + 60000)
+                            ? `Atualizada em ${formatProgressionDateTime(prog.updatedAt)}`
+                            : `Salva em ${formatProgressionDateTime(prog.createdAt)}`}
+                        </span>
+                        {!prog.isPreset && prog.updatedAt && prog.updatedAt > (prog.createdAt + 60000) && (
+                          <span className="text-[9px] text-amber-400 font-mono px-1 bg-amber-950/40 border border-amber-800/50">
+                            editada
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Action buttons: Play & Load */}
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    {/* Action buttons: Play, Load, Overwrite, Export, Delete */}
+                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
                       <button
                         type="button"
                         onClick={() => handlePlayProgression(prog)}
@@ -311,6 +338,44 @@ export const FavoritesLibrary: React.FC<FavoritesLibraryProps> = ({
                         <span>Carregar</span>
                         <ArrowRight className="w-3 h-3" />
                       </button>
+
+                      {/* Overwrite with current timeline */}
+                      {!prog.isPreset && onOverwriteProgression && currentTimelineLength > 0 && (
+                        confirmOverwriteId === prog.id ? (
+                          <div className="inline-flex items-center gap-1 p-0.5 bg-amber-950/40 border border-amber-600/60 text-xs animate-in fade-in duration-100">
+                            <span className="text-[10px] text-amber-200 px-1">Sobrescrever?</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onOverwriteProgression(prog);
+                                setConfirmOverwriteId(null);
+                              }}
+                              className="px-1.5 py-0.5 bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-medium"
+                              title="Confirmar substituição"
+                            >
+                              Sim
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmOverwriteId(null)}
+                              className="px-1.5 py-0.5 bg-[#181c26] hover:bg-[#222836] text-slate-400 text-[10px]"
+                              title="Cancelar"
+                            >
+                              Não
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmOverwriteId(prog.id)}
+                            className="p-1.5 rounded-none bg-amber-950/20 hover:bg-amber-900/40 text-amber-300 border border-amber-700/40 text-xs transition-colors flex items-center gap-1"
+                            title={`Sobrescrever "${prog.name}" com os ${currentTimelineLength} acordes atuais da linha do tempo`}
+                          >
+                            <RefreshCw className="w-3 h-3" />
+                            <span className="hidden xl:inline text-[10px]">Sobrescrever</span>
+                          </button>
+                        )
+                      )}
 
                       {onExportMidi && (
                         <button
@@ -385,9 +450,10 @@ export const FavoritesLibrary: React.FC<FavoritesLibraryProps> = ({
 interface SaveProgressionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (name: string, description: string, includeMelody: boolean) => void;
+  onSave: (name: string, description: string, includeMelody: boolean, overwriteId?: string) => void;
   defaultName: string;
   currentMelody?: SavedMelodyConfig | null;
+  existingProgressions?: SavedProgression[];
 }
 
 export const SaveProgressionModal: React.FC<SaveProgressionModalProps> = ({
@@ -396,17 +462,53 @@ export const SaveProgressionModal: React.FC<SaveProgressionModalProps> = ({
   onSave,
   defaultName,
   currentMelody,
+  existingProgressions = [],
 }) => {
   const [name, setName] = useState(defaultName);
   const [description, setDescription] = useState('');
   const [includeMelody, setIncludeMelody] = useState(true);
+  const [overwriteMode, setOverwriteMode] = useState<'overwrite' | 'copy'>('overwrite');
+
+  useEffect(() => {
+    if (isOpen) {
+      setName(defaultName);
+      setDescription('');
+      setOverwriteMode('overwrite');
+    }
+  }, [defaultName, isOpen]);
+
+  // Check if a saved progression with the exact same name already exists
+  const trimmedName = name.trim().toLowerCase();
+  const matchingExisting = useMemo(() => {
+    if (!trimmedName) return null;
+    return (
+      existingProgressions.find(
+        (p) => !p.isPreset && p.name.trim().toLowerCase() === trimmedName
+      ) || null
+    );
+  }, [trimmedName, existingProgressions]);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
-    onSave(name.trim(), description.trim(), includeMelody);
+    const finalName = name.trim();
+    if (!finalName) return;
+
+    if (matchingExisting && overwriteMode === 'overwrite') {
+      onSave(
+        finalName,
+        description.trim() || matchingExisting.description || '',
+        includeMelody,
+        matchingExisting.id
+      );
+    } else {
+      const saveName =
+        matchingExisting && overwriteMode === 'copy'
+          ? `${finalName} (Cópia)`
+          : finalName;
+      onSave(saveName, description.trim(), includeMelody);
+    }
     onClose();
   };
 
@@ -429,7 +531,33 @@ export const SaveProgressionModal: React.FC<SaveProgressionModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3 pt-3">
+        <form onSubmit={handleSubmit} className="space-y-3.5 pt-3">
+          {/* Quick select existing progression to overwrite */}
+          {existingProgressions.length > 0 && (
+            <div className="flex items-center justify-between text-[11px] text-slate-400">
+              <span>Ou atualize uma salva:</span>
+              <select
+                value={matchingExisting?.id || ''}
+                onChange={(e) => {
+                  const selected = existingProgressions.find((p) => p.id === e.target.value);
+                  if (selected) {
+                    setName(selected.name);
+                    if (selected.description) setDescription(selected.description);
+                    setOverwriteMode('overwrite');
+                  }
+                }}
+                className="bg-[#161a24] text-slate-300 text-[11px] border border-[#232938] px-2 py-0.5 rounded-none outline-none cursor-pointer max-w-[210px] truncate"
+              >
+                <option value="">-- Escolher existente --</option>
+                {existingProgressions.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-normal text-slate-300 mb-1">
               Nome da Progressão *
@@ -444,6 +572,57 @@ export const SaveProgressionModal: React.FC<SaveProgressionModalProps> = ({
               className="w-full px-3 py-1.5 text-xs rounded-none bg-[#0f1117] border border-[#222736] text-slate-200 focus:border-indigo-500/60 outline-none font-normal"
             />
           </div>
+
+          {/* Overwrite Duplicate Notice & Choices */}
+          {matchingExisting && (
+            <div className="p-3 rounded-none bg-amber-950/30 border border-amber-600/50 space-y-2 text-xs animate-in fade-in duration-100">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <div className="font-medium text-amber-200">
+                    Já existe uma progressão com o nome "{matchingExisting.name}"
+                  </div>
+                  <div className="text-[11px] text-amber-300/80 font-light flex items-center gap-1.5 flex-wrap">
+                    <Clock className="w-3 h-3 text-amber-400 shrink-0" />
+                    <span>
+                      {matchingExisting.updatedAt && matchingExisting.updatedAt > (matchingExisting.createdAt + 60000)
+                        ? `Atualizada em ${formatProgressionDateTime(matchingExisting.updatedAt)}`
+                        : `Salva em ${formatProgressionDateTime(matchingExisting.createdAt)}`}
+                    </span>
+                    <span>•</span>
+                    <span>
+                      {matchingExisting.chords.map((c) => resolveChordItem(c)?.symbol || '?').join(' - ')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Overwrite Choice */}
+              <div className="pt-2 border-t border-amber-800/40 flex items-center gap-4 text-xs">
+                <label className="flex items-center gap-1.5 cursor-pointer text-slate-200 font-normal">
+                  <input
+                    type="radio"
+                    name="save-overwrite-choice"
+                    checked={overwriteMode === 'overwrite'}
+                    onChange={() => setOverwriteMode('overwrite')}
+                    className="accent-amber-400 cursor-pointer"
+                  />
+                  <span className="font-medium text-amber-300">Sobrescrever existente</span>
+                </label>
+
+                <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 font-light">
+                  <input
+                    type="radio"
+                    name="save-overwrite-choice"
+                    checked={overwriteMode === 'copy'}
+                    onChange={() => setOverwriteMode('copy')}
+                    className="accent-amber-400 cursor-pointer"
+                  />
+                  <span>Salvar como nova cópia</span>
+                </label>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-normal text-slate-300 mb-1">
@@ -500,9 +679,23 @@ export const SaveProgressionModal: React.FC<SaveProgressionModalProps> = ({
             <button
               id="btn-confirm-save-progression"
               type="submit"
-              className="px-3 py-1.5 rounded-none text-xs font-normal bg-indigo-600/80 hover:bg-indigo-500/80 text-white border border-indigo-500/50 shadow-xs"
+              className={`px-3.5 py-1.5 rounded-none text-xs font-normal border shadow-xs transition-all flex items-center gap-1.5 active:translate-y-0.5 ${
+                matchingExisting && overwriteMode === 'overwrite'
+                  ? 'bg-amber-600/90 hover:bg-amber-500/90 text-white border-amber-500 font-medium'
+                  : 'bg-indigo-600/80 hover:bg-indigo-500/80 text-white border-indigo-500/50'
+              }`}
             >
-              Salvar na Biblioteca
+              {matchingExisting && overwriteMode === 'overwrite' ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Sobrescrever "{matchingExisting.name}"</span>
+                </>
+              ) : (
+                <>
+                  <Bookmark className="w-3.5 h-3.5" />
+                  <span>Salvar na Biblioteca</span>
+                </>
+              )}
             </button>
           </div>
         </form>

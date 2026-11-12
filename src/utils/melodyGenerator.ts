@@ -145,6 +145,23 @@ export function generateMelodySuggestions(
 
   const defaultOctave = isMinor ? 4 : 4;
 
+  // Helper to add notes strictly within the chord item's beat boundary
+  const addFitted = (
+    list: MelodyNote[],
+    noteName: string,
+    octave: number,
+    dur: number,
+    start: number,
+    chordIndex: number,
+    role: 'root' | 'third' | 'fifth' | 'seventh' | 'passing' | 'accent',
+    measureEnd: number
+  ) => {
+    if (start >= measureEnd) return;
+    const available = measureEnd - start;
+    if (available < 0.2) return;
+    list.push(createMelodyNote(noteName, octave, Math.min(dur, available), start, chordIndex, role, keyRootSt));
+  };
+
   // 1. Estilo Lírico / Cantável (Pop & Vocal)
   const lyricalNotes: MelodyNote[] = [];
   let currentBeat = 0;
@@ -156,33 +173,37 @@ export function generateMelodySuggestions(
     const thirdN = chordNotes.length > 1 ? chordNotes[1] : rootN;
     const fifthN = chordNotes.length > 2 ? chordNotes[2] : rootN;
     const seventhN = chordNotes.length > 3 ? chordNotes[3] : undefined;
+    const measureEnd = currentBeat + item.durationBeats;
 
     // Phrase contours based on chord position and variationSeed
     const patternVariant = (cIdx + variationSeed) % 4;
 
-    if (patternVariant === 0) {
+    if (item.durationBeats <= 2) {
+      addFitted(lyricalNotes, thirdN, defaultOctave, 1.0, currentBeat, cIdx, 'third', measureEnd);
+      addFitted(lyricalNotes, fifthN, defaultOctave, 1.0, currentBeat + 1.0, cIdx, 'fifth', measureEnd);
+    } else if (patternVariant === 0) {
       // 3ª (1.5 beats) -> 5ª (1.5 beats) -> 3ª (1 beat)
-      lyricalNotes.push(createMelodyNote(thirdN, defaultOctave, 1.5, currentBeat, cIdx, 'third', keyRootSt));
-      lyricalNotes.push(createMelodyNote(fifthN, defaultOctave, 1.5, currentBeat + 1.5, cIdx, 'fifth', keyRootSt));
-      lyricalNotes.push(createMelodyNote(thirdN, defaultOctave, 1.0, currentBeat + 3.0, cIdx, 'third', keyRootSt));
+      addFitted(lyricalNotes, thirdN, defaultOctave, 1.5, currentBeat, cIdx, 'third', measureEnd);
+      addFitted(lyricalNotes, fifthN, defaultOctave, 1.5, currentBeat + 1.5, cIdx, 'fifth', measureEnd);
+      addFitted(lyricalNotes, thirdN, defaultOctave, 1.0, currentBeat + 3.0, cIdx, 'third', measureEnd);
     } else if (patternVariant === 1) {
       // Root (1 beat) -> 2ª/Passagem (1 beat) -> 3ª (2 beats sustentados)
       const scaleNotes = chord.scale.notes;
       const passing = scaleNotes[(scaleNotes.indexOf(rootN) + 1) % scaleNotes.length] || fifthN;
-      lyricalNotes.push(createMelodyNote(rootN, defaultOctave, 1.0, currentBeat, cIdx, 'root', keyRootSt));
-      lyricalNotes.push(createMelodyNote(passing, defaultOctave, 1.0, currentBeat + 1.0, cIdx, 'passing', keyRootSt));
-      lyricalNotes.push(createMelodyNote(thirdN, defaultOctave, 2.0, currentBeat + 2.0, cIdx, 'third', keyRootSt));
+      addFitted(lyricalNotes, rootN, defaultOctave, 1.0, currentBeat, cIdx, 'root', measureEnd);
+      addFitted(lyricalNotes, passing, defaultOctave, 1.0, currentBeat + 1.0, cIdx, 'passing', measureEnd);
+      addFitted(lyricalNotes, thirdN, defaultOctave, 2.0, currentBeat + 2.0, cIdx, 'third', measureEnd);
     } else if (patternVariant === 2) {
       // 5ª (2 beats) -> 7ª ou 3ª (1 beat) -> Tônica (1 beat)
       const targetTone = seventhN || thirdN;
-      lyricalNotes.push(createMelodyNote(fifthN, defaultOctave, 2.0, currentBeat, cIdx, 'fifth', keyRootSt));
-      lyricalNotes.push(createMelodyNote(targetTone, defaultOctave, 1.0, currentBeat + 2.0, cIdx, seventhN ? 'seventh' : 'third', keyRootSt));
-      lyricalNotes.push(createMelodyNote(rootN, defaultOctave, 1.0, currentBeat + 3.0, cIdx, 'root', keyRootSt));
+      addFitted(lyricalNotes, fifthN, defaultOctave, 2.0, currentBeat, cIdx, 'fifth', measureEnd);
+      addFitted(lyricalNotes, targetTone, defaultOctave, 1.0, currentBeat + 2.0, cIdx, seventhN ? 'seventh' : 'third', measureEnd);
+      addFitted(lyricalNotes, rootN, defaultOctave, 1.0, currentBeat + 3.0, cIdx, 'root', measureEnd);
     } else {
       // 3ª (1 beat) -> 5ª (1 beat) -> Tônica aguda (2 beats com repouso lírico)
-      lyricalNotes.push(createMelodyNote(thirdN, defaultOctave, 1.0, currentBeat, cIdx, 'third', keyRootSt));
-      lyricalNotes.push(createMelodyNote(fifthN, defaultOctave, 1.0, currentBeat + 1.0, cIdx, 'fifth', keyRootSt));
-      lyricalNotes.push(createMelodyNote(rootN, defaultOctave + 1, 2.0, currentBeat + 2.0, cIdx, 'root', keyRootSt));
+      addFitted(lyricalNotes, thirdN, defaultOctave, 1.0, currentBeat, cIdx, 'third', measureEnd);
+      addFitted(lyricalNotes, fifthN, defaultOctave, 1.0, currentBeat + 1.0, cIdx, 'fifth', measureEnd);
+      addFitted(lyricalNotes, rootN, defaultOctave + 1, 2.0, currentBeat + 2.0, cIdx, 'root', measureEnd);
     }
 
     currentBeat += item.durationBeats;
@@ -198,34 +219,35 @@ export function generateMelodySuggestions(
     const rootN = chordNotes[0];
     const fifthN = chordNotes.length > 2 ? chordNotes[2] : rootN;
     const scale = chord.scale.notes;
+    const measureEnd = currentBeat + item.durationBeats;
 
     const rVariant = (cIdx + variationSeed * 2) % 3;
 
-    if (rVariant === 0) {
-      // Riff sincopado: Root (0.5), Root (0.5), 5ª (1.0), Pausa/3ª (1.0), Root (1.0)
+    if (item.durationBeats <= 2) {
+      addFitted(riffNotes, rootN, defaultOctave, 0.5, currentBeat, cIdx, 'root', measureEnd);
+      addFitted(riffNotes, fifthN, defaultOctave, 1.0, currentBeat + 0.5, cIdx, 'fifth', measureEnd);
+    } else if (rVariant === 0) {
       const thirdN = chordNotes.length > 1 ? chordNotes[1] : rootN;
-      riffNotes.push(createMelodyNote(rootN, defaultOctave, 0.5, currentBeat, cIdx, 'root', keyRootSt));
-      riffNotes.push(createMelodyNote(rootN, defaultOctave, 0.5, currentBeat + 0.5, cIdx, 'root', keyRootSt));
-      riffNotes.push(createMelodyNote(fifthN, defaultOctave, 1.0, currentBeat + 1.0, cIdx, 'fifth', keyRootSt));
-      riffNotes.push(createMelodyNote(thirdN, defaultOctave, 1.0, currentBeat + 2.0, cIdx, 'third', keyRootSt));
-      riffNotes.push(createMelodyNote(rootN, defaultOctave, 1.0, currentBeat + 3.0, cIdx, 'root', keyRootSt));
+      addFitted(riffNotes, rootN, defaultOctave, 0.5, currentBeat, cIdx, 'root', measureEnd);
+      addFitted(riffNotes, rootN, defaultOctave, 0.5, currentBeat + 0.5, cIdx, 'root', measureEnd);
+      addFitted(riffNotes, fifthN, defaultOctave, 1.0, currentBeat + 1.0, cIdx, 'fifth', measureEnd);
+      addFitted(riffNotes, thirdN, defaultOctave, 1.0, currentBeat + 2.0, cIdx, 'third', measureEnd);
+      addFitted(riffNotes, rootN, defaultOctave, 1.0, currentBeat + 3.0, cIdx, 'root', measureEnd);
     } else if (rVariant === 1) {
-      // Salto enérgico para a oitava
       const thirdN = chordNotes.length > 1 ? chordNotes[1] : rootN;
-      riffNotes.push(createMelodyNote(fifthN, defaultOctave, 0.75, currentBeat, cIdx, 'fifth', keyRootSt));
-      riffNotes.push(createMelodyNote(rootN, defaultOctave + 1, 0.75, currentBeat + 0.75, cIdx, 'root', keyRootSt));
-      riffNotes.push(createMelodyNote(thirdN, defaultOctave, 1.0, currentBeat + 1.5, cIdx, 'third', keyRootSt));
-      riffNotes.push(createMelodyNote(rootN, defaultOctave, 1.5, currentBeat + 2.5, cIdx, 'root', keyRootSt));
+      addFitted(riffNotes, fifthN, defaultOctave, 0.75, currentBeat, cIdx, 'fifth', measureEnd);
+      addFitted(riffNotes, rootN, defaultOctave + 1, 0.75, currentBeat + 0.75, cIdx, 'root', measureEnd);
+      addFitted(riffNotes, thirdN, defaultOctave, 1.0, currentBeat + 1.5, cIdx, 'third', measureEnd);
+      addFitted(riffNotes, rootN, defaultOctave, 1.5, currentBeat + 2.5, cIdx, 'root', measureEnd);
     } else {
-      // Pentatônica rápida
       const p1 = scale[0] || rootN;
       const p2 = scale[2] || rootN;
       const p3 = scale[4] || fifthN;
-      riffNotes.push(createMelodyNote(p1, defaultOctave, 0.5, currentBeat, cIdx, 'root', keyRootSt));
-      riffNotes.push(createMelodyNote(p2, defaultOctave, 0.5, currentBeat + 0.5, cIdx, 'third', keyRootSt));
-      riffNotes.push(createMelodyNote(p3, defaultOctave, 1.0, currentBeat + 1.0, cIdx, 'fifth', keyRootSt));
-      riffNotes.push(createMelodyNote(p2, defaultOctave, 1.0, currentBeat + 2.0, cIdx, 'third', keyRootSt));
-      riffNotes.push(createMelodyNote(p1, defaultOctave, 1.0, currentBeat + 3.0, cIdx, 'root', keyRootSt));
+      addFitted(riffNotes, p1, defaultOctave, 0.5, currentBeat, cIdx, 'root', measureEnd);
+      addFitted(riffNotes, p2, defaultOctave, 0.5, currentBeat + 0.5, cIdx, 'third', measureEnd);
+      addFitted(riffNotes, p3, defaultOctave, 1.0, currentBeat + 1.0, cIdx, 'fifth', measureEnd);
+      addFitted(riffNotes, p2, defaultOctave, 1.0, currentBeat + 2.0, cIdx, 'third', measureEnd);
+      addFitted(riffNotes, p1, defaultOctave, 1.0, currentBeat + 3.0, cIdx, 'root', measureEnd);
     }
 
     currentBeat += item.durationBeats;
@@ -242,18 +264,13 @@ export function generateMelodySuggestions(
     const thirdN = chordNotes.length > 1 ? chordNotes[1] : rootN;
     const fifthN = chordNotes.length > 2 ? chordNotes[2] : rootN;
     const upperRoot = rootN;
+    const measureEnd = currentBeat + item.durationBeats;
 
-    // Arpejo de 4 notas por compasso: 1 - 3 - 5 - 8va (ou 1 - 5 - 3 - 5)
-    if ((cIdx + variationSeed) % 2 === 0) {
-      arpeggioNotes.push(createMelodyNote(rootN, defaultOctave, 1.0, currentBeat, cIdx, 'root', keyRootSt));
-      arpeggioNotes.push(createMelodyNote(thirdN, defaultOctave, 1.0, currentBeat + 1.0, cIdx, 'third', keyRootSt));
-      arpeggioNotes.push(createMelodyNote(fifthN, defaultOctave, 1.0, currentBeat + 2.0, cIdx, 'fifth', keyRootSt));
-      arpeggioNotes.push(createMelodyNote(upperRoot, defaultOctave + 1, 1.0, currentBeat + 3.0, cIdx, 'root', keyRootSt));
-    } else {
-      arpeggioNotes.push(createMelodyNote(rootN, defaultOctave, 1.0, currentBeat, cIdx, 'root', keyRootSt));
-      arpeggioNotes.push(createMelodyNote(fifthN, defaultOctave, 1.0, currentBeat + 1.0, cIdx, 'fifth', keyRootSt));
-      arpeggioNotes.push(createMelodyNote(thirdN, defaultOctave, 1.0, currentBeat + 2.0, cIdx, 'third', keyRootSt));
-      arpeggioNotes.push(createMelodyNote(fifthN, defaultOctave, 1.0, currentBeat + 3.0, cIdx, 'fifth', keyRootSt));
+    for (let b = 0; b < item.durationBeats; b++) {
+      const n = b % 4 === 0 ? rootN : b % 4 === 1 ? thirdN : b % 4 === 2 ? fifthN : upperRoot;
+      const oct = b % 4 === 3 ? defaultOctave + 1 : defaultOctave;
+      const role = b % 4 === 0 ? 'root' : b % 4 === 1 ? 'third' : b % 4 === 2 ? 'fifth' : 'root';
+      addFitted(arpeggioNotes, n, oct, 1.0, currentBeat + b, cIdx, role, measureEnd);
     }
 
     currentBeat += item.durationBeats;
@@ -269,24 +286,25 @@ export function generateMelodySuggestions(
     const rootN = chordNotes[0];
     const thirdN = chordNotes.length > 1 ? chordNotes[1] : rootN;
     const fifthN = chordNotes.length > 2 ? chordNotes[2] : rootN;
+    const measureEnd = currentBeat + item.durationBeats;
 
     const bVariant = (cIdx + variationSeed) % 3;
 
-    if (bVariant === 0) {
-      // Frase expressiva blues: 3ª -> 5ª sustentada
-      bluesNotes.push(createMelodyNote(thirdN, defaultOctave, 1.0, currentBeat, cIdx, 'third', keyRootSt));
-      bluesNotes.push(createMelodyNote(fifthN, defaultOctave, 2.0, currentBeat + 1.0, cIdx, 'fifth', keyRootSt));
-      bluesNotes.push(createMelodyNote(rootN, defaultOctave, 1.0, currentBeat + 3.0, cIdx, 'root', keyRootSt));
+    if (item.durationBeats <= 2) {
+      addFitted(bluesNotes, thirdN, defaultOctave, 1.0, currentBeat, cIdx, 'third', measureEnd);
+      addFitted(bluesNotes, rootN, defaultOctave, 1.0, currentBeat + 1.0, cIdx, 'root', measureEnd);
+    } else if (bVariant === 0) {
+      addFitted(bluesNotes, thirdN, defaultOctave, 1.0, currentBeat, cIdx, 'third', measureEnd);
+      addFitted(bluesNotes, fifthN, defaultOctave, 2.0, currentBeat + 1.0, cIdx, 'fifth', measureEnd);
+      addFitted(bluesNotes, rootN, defaultOctave, 1.0, currentBeat + 3.0, cIdx, 'root', measureEnd);
     } else if (bVariant === 1) {
-      // Salto com repouso dramático
-      bluesNotes.push(createMelodyNote(fifthN, defaultOctave, 1.5, currentBeat, cIdx, 'fifth', keyRootSt));
-      bluesNotes.push(createMelodyNote(thirdN, defaultOctave, 0.5, currentBeat + 1.5, cIdx, 'third', keyRootSt));
-      bluesNotes.push(createMelodyNote(rootN, defaultOctave, 2.0, currentBeat + 2.0, cIdx, 'root', keyRootSt));
+      addFitted(bluesNotes, fifthN, defaultOctave, 1.5, currentBeat, cIdx, 'fifth', measureEnd);
+      addFitted(bluesNotes, thirdN, defaultOctave, 0.5, currentBeat + 1.5, cIdx, 'third', measureEnd);
+      addFitted(bluesNotes, rootN, defaultOctave, 2.0, currentBeat + 2.0, cIdx, 'root', measureEnd);
     } else {
-      // Resolução calma
-      bluesNotes.push(createMelodyNote(rootN, defaultOctave, 1.0, currentBeat, cIdx, 'root', keyRootSt));
-      bluesNotes.push(createMelodyNote(fifthN, defaultOctave, 1.0, currentBeat + 1.0, cIdx, 'fifth', keyRootSt));
-      bluesNotes.push(createMelodyNote(thirdN, defaultOctave, 2.0, currentBeat + 2.0, cIdx, 'third', keyRootSt));
+      addFitted(bluesNotes, rootN, defaultOctave, 1.0, currentBeat, cIdx, 'root', measureEnd);
+      addFitted(bluesNotes, fifthN, defaultOctave, 1.0, currentBeat + 1.0, cIdx, 'fifth', measureEnd);
+      addFitted(bluesNotes, thirdN, defaultOctave, 2.0, currentBeat + 2.0, cIdx, 'third', measureEnd);
     }
 
     currentBeat += item.durationBeats;
@@ -301,13 +319,16 @@ export function generateMelodySuggestions(
     const chordNotes = chord.noteNames;
     const thirdN = chordNotes.length > 1 ? chordNotes[1] : chordNotes[0];
     const fifthN = chordNotes.length > 2 ? chordNotes[2] : chordNotes[0];
+    const measureEnd = currentBeat + item.durationBeats;
 
-    // Notas longas de 2 ou 4 tempos que flutuam sobre o acorde
-    if (cIdx % 2 === 0) {
-      ambientNotes.push(createMelodyNote(thirdN, defaultOctave, 2.0, currentBeat, cIdx, 'third', keyRootSt));
-      ambientNotes.push(createMelodyNote(fifthN, defaultOctave, 2.0, currentBeat + 2.0, cIdx, 'fifth', keyRootSt));
+    if (item.durationBeats <= 2) {
+      addFitted(ambientNotes, thirdN, defaultOctave, item.durationBeats, currentBeat, cIdx, 'third', measureEnd);
+    } else if (cIdx % 2 === 0) {
+      const halfDur = item.durationBeats / 2;
+      addFitted(ambientNotes, thirdN, defaultOctave, halfDur, currentBeat, cIdx, 'third', measureEnd);
+      addFitted(ambientNotes, fifthN, defaultOctave, halfDur, currentBeat + halfDur, cIdx, 'fifth', measureEnd);
     } else {
-      ambientNotes.push(createMelodyNote(fifthN, defaultOctave, 4.0, currentBeat, cIdx, 'fifth', keyRootSt));
+      addFitted(ambientNotes, fifthN, defaultOctave, item.durationBeats, currentBeat, cIdx, 'fifth', measureEnd);
     }
 
     currentBeat += item.durationBeats;

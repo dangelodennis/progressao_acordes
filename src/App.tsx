@@ -34,6 +34,7 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { useAuth } from './context/AuthContext';
 import { useSyncProgressions } from './utils/useSyncProgressions';
 import { transposeTimeline, transposeMelody } from './utils/transposition';
+import { generateRandomProgressionForGenre } from './utils/progressionGenerator';
 
 const LOCAL_STORAGE_KEY = 'harmoniq_saved_progressions';
 
@@ -356,27 +357,72 @@ export default function App() {
     }
   }, [timeline, selectedIndex, currentMelodyConfig, instrument]);
 
-  // Save current progression to personal favorites (syncs to Firestore when logged in)
+  // Generate a random musical progression tailored to the currently selected genre
+  const handleGenerateRandomProgression = useCallback(() => {
+    audioEngine.stopAll();
+    const result = generateRandomProgressionForGenre(
+      selectedGenre,
+      timeline.map((t) => t.chord)
+    );
+
+    setTimeline(result.chords);
+    setTempoBpm(result.tempoBpm);
+    setInstrument(result.instrument);
+    setTotalTransposition(0);
+
+    if (result.chords.length > 0) {
+      setSelectedIndex(0);
+      setInspectedChord(result.chords[0].chord);
+      setInspectedOctaveOffset(0);
+      audioEngine.playChord(result.chords[0].chord, result.instrument, 1.4, 0);
+    } else {
+      setSelectedIndex(null);
+    }
+  }, [selectedGenre, timeline]);
+
+  // Save or overwrite progression in personal favorites (syncs to Firestore when logged in)
   const handleSaveCurrentProgression = (
     name: string,
     description: string,
-    includeMelody: boolean = true
+    includeMelody: boolean = true,
+    overwriteId?: string
   ) => {
     if (timeline.length === 0) return;
+
+    // Check if an existing progression should be overwritten
+    const existing = overwriteId
+      ? savedProgressions.find((p) => p.id === overwriteId)
+      : savedProgressions.find(
+          (p) => !p.isPreset && p.name.trim().toLowerCase() === name.trim().toLowerCase()
+        );
+
+    const now = Date.now();
     const newProg: SavedProgression = {
-      id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      id: existing ? existing.id : `user-${now}-${Math.random().toString(36).substr(2, 5)}`,
       name,
-      description,
+      description: description || existing?.description || '',
       genre: selectedGenre,
       chords: timeline.map((t) => t.chord),
       tempoBpm,
       instrument,
-      createdAt: Date.now(),
+      createdAt: existing?.createdAt || now,
+      updatedAt: now,
       isPreset: false,
       melody: includeMelody && currentMelodyConfig ? currentMelodyConfig : undefined,
     };
 
     syncSaveProgression(newProg);
+  };
+
+  // Quick overwrite from within the library
+  const handleOverwriteProgressionFromLibrary = (targetProg: SavedProgression) => {
+    if (timeline.length === 0) return;
+    handleSaveCurrentProgression(
+      targetProg.name,
+      targetProg.description || '',
+      Boolean(currentMelodyConfig),
+      targetProg.id
+    );
   };
 
   // Delete saved progression
@@ -529,6 +575,7 @@ export default function App() {
             onBackingStyleChange={setBackingStyle}
             onTransposeProgression={handleTransposeProgression}
             totalTransposition={totalTransposition}
+            onGenerateRandomProgression={handleGenerateRandomProgression}
           />
 
           {/* Smart Next Chord Suggestions Grid (Placed directly after the Timeline) */}
@@ -541,6 +588,7 @@ export default function App() {
             onPreviewOnly={handlePreviewOnly}
             onOpenFullPicker={() => setIsPickerOpen(true)}
             currentOctaveOffset={inspectedOctaveOffset}
+            onGenerateRandomProgression={handleGenerateRandomProgression}
           />
 
           {/* Melody Suggestions & Scale Visualizer (Fretboard & Keyboard) */}
@@ -601,6 +649,8 @@ export default function App() {
         onDeleteProgression={handleDeleteProgression}
         activeGenre={selectedGenre}
         onExportMidi={handleExportSavedProgressionMidi}
+        currentTimelineLength={timeline.length}
+        onOverwriteProgression={handleOverwriteProgressionFromLibrary}
       />
 
       <SaveProgressionModal
@@ -609,6 +659,7 @@ export default function App() {
         onSave={handleSaveCurrentProgression}
         defaultName={defaultSaveName}
         currentMelody={currentMelodyConfig}
+        existingProgressions={savedProgressions.filter((p) => !p.isPreset)}
       />
 
       <ExportMidiModal

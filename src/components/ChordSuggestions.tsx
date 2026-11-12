@@ -1,7 +1,7 @@
 import React from 'react';
 import { ChordDefinition, ChordSuggestion, Genre, InstrumentType } from '../types';
 import { audioEngine } from '../utils/audioPlayer';
-import { Sparkles, Plus, Volume2, ArrowRight, Grid } from 'lucide-react';
+import { Sparkles, Plus, Volume2, ArrowRight, Grid, Dices } from 'lucide-react';
 import { getGenreLabel } from '../data/musicTheory';
 
 interface ChordSuggestionsProps {
@@ -13,6 +13,7 @@ interface ChordSuggestionsProps {
   onPreviewOnly: (chord: ChordDefinition) => void;
   onOpenFullPicker: () => void;
   currentOctaveOffset?: number;
+  onGenerateRandomProgression?: () => void;
 }
 
 export const ChordSuggestions: React.FC<ChordSuggestionsProps> = ({
@@ -24,6 +25,7 @@ export const ChordSuggestions: React.FC<ChordSuggestionsProps> = ({
   onPreviewOnly,
   onOpenFullPicker,
   currentOctaveOffset = 0,
+  onGenerateRandomProgression,
 }) => {
   const handleCardClick = (chord: ChordDefinition) => {
     audioEngine.playChord(chord, instrument, 1.4, currentOctaveOffset);
@@ -63,16 +65,32 @@ export const ChordSuggestions: React.FC<ChordSuggestionsProps> = ({
           </div>
         </div>
 
-        {/* Explore all chords button */}
-        <button
-          id="btn-explore-all-chords"
-          type="button"
-          onClick={onOpenFullPicker}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-none bg-[#181c26] hover:bg-[#202534] text-slate-300 text-xs font-normal border border-[#262c3c] transition-colors active:translate-y-0.5"
-        >
-          <Grid className="w-3.5 h-3.5 text-indigo-400/80" />
-          <span>Todos os Acordes</span>
-        </button>
+        {/* Action buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {onGenerateRandomProgression && (
+            <button
+              id="btn-generate-random-suggestions"
+              type="button"
+              onClick={onGenerateRandomProgression}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-none bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-normal border border-amber-500/30 transition-all active:translate-y-0.5"
+              title={`Gerar uma progressão aleatória completa no estilo ${getGenreLabel(genre)}`}
+            >
+              <Dices className="w-3.5 h-3.5 text-amber-400" />
+              <span>Gerar Aleatória</span>
+            </button>
+          )}
+
+          {/* Explore all chords button */}
+          <button
+            id="btn-explore-all-chords"
+            type="button"
+            onClick={onOpenFullPicker}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-none bg-[#181c26] hover:bg-[#202534] text-slate-300 text-xs font-normal border border-[#262c3c] transition-colors active:translate-y-0.5"
+          >
+            <Grid className="w-3.5 h-3.5 text-indigo-400/80" />
+            <span>Todos os Acordes</span>
+          </button>
+        </div>
       </div>
 
       {/* Grid of smart suggestion cards */}

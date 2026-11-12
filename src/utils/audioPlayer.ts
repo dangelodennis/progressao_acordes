@@ -427,36 +427,54 @@ class WebAudioEngine {
     const { rootFreq, fifthFreq, thirdFreq, octaveFreq } = this.getBassFrequencies(chord);
     const eighthSec = secondsPerBeat / 2;
 
+    const playKickIf = (beat: number, vel: number) => {
+      if (beat < durationBeats) this.playKick(t(beat), vel);
+    };
+    const playSnareIf = (beat: number, vel: number) => {
+      if (beat < durationBeats) this.playSnare(t(beat), vel);
+    };
+    const playRimshotIf = (beat: number, vel: number) => {
+      if (beat < durationBeats) this.playRimshot(t(beat), vel);
+    };
+    const playBassIf = (freq: number, beat: number, dur: number, vel: number) => {
+      if (beat < durationBeats) this.playBassNote(freq, t(beat), dur, vel);
+    };
+
     switch (style) {
       case 'rock': {
         // Drums: Rock 8th feel, kick on 1, 3, snare on 2, 4
         this.playKick(t(0), 0.9);
-        this.playSnare(t(1), 0.85);
-        this.playKick(t(2), 0.85);
-        this.playKick(t(2.5), 0.7);
-        this.playSnare(t(3), 0.85);
+        playSnareIf(1, 0.85);
+        playKickIf(2, 0.85);
+        playKickIf(2.5, 0.7);
+        playSnareIf(3, 0.85);
 
         // 8th-note Hi-Hats
         for (let b = 0; b < durationBeats * 2; b++) {
           this.playHiHat(t(b * 0.5), false, b % 2 === 0 ? 0.65 : 0.45);
         }
 
-        // Bass: Driving 8th notes (root on beats, 5th pickup on 3.5)
-        for (let b = 0; b < 7; b++) {
-          this.playBassNote(rootFreq, t(b * 0.5), eighthSec * 0.85, 0.7);
+        // Bass: Driving 8th notes (root on beats, 5th pickup on last 8th before measure end)
+        const total8ths = Math.floor(durationBeats * 2);
+        for (let b = 0; b < total8ths; b++) {
+          const beatPos = b * 0.5;
+          if (b === total8ths - 1 && total8ths >= 4) {
+            this.playBassNote(fifthFreq, t(beatPos), eighthSec * 0.85, 0.75);
+          } else {
+            this.playBassNote(rootFreq, t(beatPos), eighthSec * 0.85, 0.7);
+          }
         }
-        this.playBassNote(fifthFreq, t(3.5), eighthSec * 0.85, 0.75);
         break;
       }
 
       case 'funk': {
         // Drums: Syncopated funk groove, ghost snare on 2.75, open hat on 1.5 & 3.5
         this.playKick(t(0), 0.95);
-        this.playSnare(t(1), 0.85);
-        this.playKick(t(1.75), 0.75);
-        this.playKick(t(2.5), 0.85);
-        this.playSnare(t(2.75), 0.35); // ghost note
-        this.playSnare(t(3), 0.9);
+        playSnareIf(1, 0.85);
+        playKickIf(1.75, 0.75);
+        playKickIf(2.5, 0.85);
+        playSnareIf(2.75, 0.35); // ghost note
+        playSnareIf(3, 0.9);
 
         // 16th hats with open accents
         const total16ths = durationBeats * 4;
@@ -467,18 +485,18 @@ class WebAudioEngine {
         }
 
         // Bass: Syncopated slap/groove line
-        this.playBassNote(rootFreq, t(0), secondsPerBeat * 0.35, 0.9);
-        this.playBassNote(octaveFreq, t(0.75), secondsPerBeat * 0.22, 0.8);
-        this.playBassNote(rootFreq, t(1.5), secondsPerBeat * 0.45, 0.85);
-        this.playBassNote(fifthFreq, t(2.5), secondsPerBeat * 0.35, 0.85);
-        this.playBassNote(rootFreq, t(3.25), secondsPerBeat * 0.25, 0.75);
+        playBassIf(rootFreq, 0, secondsPerBeat * 0.35, 0.9);
+        playBassIf(octaveFreq, 0.75, secondsPerBeat * 0.22, 0.8);
+        playBassIf(rootFreq, 1.5, secondsPerBeat * 0.45, 0.85);
+        playBassIf(fifthFreq, 2.5, secondsPerBeat * 0.35, 0.85);
+        playBassIf(rootFreq, 3.25, secondsPerBeat * 0.25, 0.75);
         break;
       }
 
       case 'reggae': {
         // Drums: "One Drop" (Kick + Rimshot strictly on beat 3 = beat index 2.0)
-        this.playKick(t(2), 0.95);
-        this.playRimshot(t(2), 0.85);
+        playKickIf(2, 0.95);
+        playRimshotIf(2, 0.85);
 
         // Offbeat Skank Hi-Hats on the "&" of each beat
         for (let b = 0; b < durationBeats; b++) {
@@ -486,18 +504,18 @@ class WebAudioEngine {
         }
 
         // Deep Reggae Sub-Bass (Roots style)
-        this.playBassNote(rootFreq, t(0), secondsPerBeat * 0.75, 0.85);
-        this.playBassNote(rootFreq, t(1.0), secondsPerBeat * 0.6, 0.8);
-        this.playBassNote(fifthFreq, t(3.0), secondsPerBeat * 0.8, 0.85);
+        playBassIf(rootFreq, 0, secondsPerBeat * 0.75, 0.85);
+        playBassIf(rootFreq, 1.0, secondsPerBeat * 0.6, 0.8);
+        playBassIf(fifthFreq, 3.0, secondsPerBeat * 0.8, 0.85);
         break;
       }
 
       case 'shuffle': {
         // Swung Blues Triplet Feel (Drums & Walking Bass)
         this.playKick(t(0), 0.9);
-        this.playSnare(t(1), 0.85);
-        this.playKick(t(2), 0.85);
-        this.playSnare(t(3), 0.85);
+        playSnareIf(1, 0.85);
+        playKickIf(2, 0.85);
+        playSnareIf(3, 0.85);
 
         // Swung triplet hats: 0, 0.667, 1.0, 1.667, 2.0, 2.667, 3.0, 3.667
         for (let b = 0; b < durationBeats; b++) {
@@ -507,10 +525,10 @@ class WebAudioEngine {
 
         // Walking Bass: Root -> 3rd -> 5th -> 6th
         const sixthFreq = rootFreq * Math.pow(2, 9 / 12);
-        this.playBassNote(rootFreq, t(0), secondsPerBeat * 0.85, 0.85);
-        this.playBassNote(thirdFreq, t(1), secondsPerBeat * 0.85, 0.8);
-        this.playBassNote(fifthFreq, t(2), secondsPerBeat * 0.85, 0.8);
-        this.playBassNote(sixthFreq, t(3), secondsPerBeat * 0.85, 0.8);
+        playBassIf(rootFreq, 0, secondsPerBeat * 0.85, 0.85);
+        playBassIf(thirdFreq, 1, secondsPerBeat * 0.85, 0.8);
+        playBassIf(fifthFreq, 2, secondsPerBeat * 0.85, 0.8);
+        playBassIf(sixthFreq, 3, secondsPerBeat * 0.85, 0.8);
         break;
       }
 
@@ -536,13 +554,13 @@ class WebAudioEngine {
       case 'bossa': {
         // Drums: Warm soft kick on 0 and 2, authentic syncopated Bossa Nova rimshot
         this.playKick(t(0), 0.7);
-        this.playKick(t(2), 0.65);
+        playKickIf(2, 0.65);
 
         // Clave Rimshot: 0, 1.5, 2.5, 3.5
         this.playRimshot(t(0), 0.75);
-        this.playRimshot(t(1.5), 0.7);
-        this.playRimshot(t(2.5), 0.75);
-        this.playRimshot(t(3.5), 0.7);
+        playRimshotIf(1.5, 0.7);
+        playRimshotIf(2.5, 0.75);
+        playRimshotIf(3.5, 0.7);
 
         // Gentle continuous shaker/hat 8ths
         for (let b = 0; b < durationBeats * 2; b++) {
@@ -550,10 +568,10 @@ class WebAudioEngine {
         }
 
         // Bass: Smooth acoustic bassline (Root on 1, 5th on upbeat of 2, Root on 3, 5th on upbeat of 4)
-        this.playBassNote(rootFreq, t(0), secondsPerBeat * 1.1, 0.75);
-        this.playBassNote(fifthFreq, t(1.5), secondsPerBeat * 0.45, 0.7);
-        this.playBassNote(rootFreq, t(2.0), secondsPerBeat * 1.1, 0.75);
-        this.playBassNote(fifthFreq, t(3.5), secondsPerBeat * 0.45, 0.7);
+        playBassIf(rootFreq, 0, secondsPerBeat * 1.1, 0.75);
+        playBassIf(fifthFreq, 1.5, secondsPerBeat * 0.45, 0.7);
+        playBassIf(rootFreq, 2.0, secondsPerBeat * 1.1, 0.75);
+        playBassIf(fifthFreq, 3.5, secondsPerBeat * 0.45, 0.7);
         break;
       }
 
@@ -565,7 +583,7 @@ class WebAudioEngine {
             this.playSnare(t(b), 0.95);
           }
         }
-        this.playKick(t(2.5), 0.8);
+        playKickIf(2.5, 0.8);
 
         // Fast open hats
         for (let b = 0; b < durationBeats * 2; b++) {
@@ -681,10 +699,12 @@ class WebAudioEngine {
       ? chord.notes
       : chord.noteNames.map(n => `${n}4`);
 
+    const totalBeats = Math.max(1, Math.round(totalDurationSec / secondsPerBeat));
+
     switch (pattern) {
       case 'quarters': {
-        // 4 quarter note strikes (beats 1, 2, 3, 4)
-        for (let b = 0; b < 4; b++) {
+        // Quarter note strikes across the duration of the chord
+        for (let b = 0; b < totalBeats; b++) {
           const timeoutId = window.setTimeout(() => {
             if (!this.isPlayingSequence && !this.isPlayingMelody) return;
             this.playChord(chord, instrument, secondsPerBeat * 0.85, octaveOffset);
@@ -695,9 +715,10 @@ class WebAudioEngine {
       }
 
       case 'eighths': {
-        // 8 eighth note pulses (beats 1 &, 2 &, 3 &, 4 &)
+        // Eighth note pulses across the duration of the chord
         const eighthSec = secondsPerBeat / 2;
-        for (let e = 0; e < 8; e++) {
+        const totalEighths = totalBeats * 2;
+        for (let e = 0; e < totalEighths; e++) {
           const timeoutId = window.setTimeout(() => {
             if (!this.isPlayingSequence && !this.isPlayingMelody) return;
             this.playChord(chord, instrument, eighthSec * 0.75, octaveOffset);
@@ -708,12 +729,24 @@ class WebAudioEngine {
       }
 
       case 'syncopated': {
-        // Syncopated Groove / Pop Pattern: strike on beat 1 (duration 1.5), beat 2.5 (duration 1.5), and beat 4 (duration 1)
-        const syncopatedBeats = [
-          { start: 0, dur: 1.3 },
-          { start: 1.5, dur: 1.3 },
-          { start: 3.0, dur: 0.9 },
-        ];
+        // Syncopated Groove / Pop Pattern scaled to chord duration
+        const syncopatedBeats: { start: number; dur: number }[] = [];
+        if (totalBeats <= 2) {
+          syncopatedBeats.push({ start: 0, dur: Math.min(1.0, totalBeats) });
+          if (totalBeats > 1) {
+            syncopatedBeats.push({ start: 1.0, dur: 0.9 });
+          }
+        } else if (totalBeats === 3) {
+          syncopatedBeats.push({ start: 0, dur: 1.3 });
+          syncopatedBeats.push({ start: 1.5, dur: 1.3 });
+        } else {
+          for (let m = 0; m < totalBeats; m += 4) {
+            if (m < totalBeats) syncopatedBeats.push({ start: m, dur: 1.3 });
+            if (m + 1.5 < totalBeats) syncopatedBeats.push({ start: m + 1.5, dur: 1.3 });
+            if (m + 3.0 < totalBeats) syncopatedBeats.push({ start: m + 3.0, dur: 0.9 });
+          }
+        }
+
         syncopatedBeats.forEach(({ start, dur }) => {
           const timeoutId = window.setTimeout(() => {
             if (!this.isPlayingSequence && !this.isPlayingMelody) return;
@@ -725,9 +758,10 @@ class WebAudioEngine {
       }
 
       case 'arpeggio': {
-        // Arpeggiates notes in chord consecutively (8th notes ascending & looped)
+        // Arpeggiates notes in chord consecutively (8th notes across chord duration)
         const eighthSec = secondsPerBeat / 2;
-        for (let i = 0; i < 8; i++) {
+        const totalSteps = totalBeats * 2;
+        for (let i = 0; i < totalSteps; i++) {
           const noteIndex = i % notes.length;
           const noteStr = notes[noteIndex];
           const timeoutId = window.setTimeout(() => {
@@ -742,21 +776,24 @@ class WebAudioEngine {
       case 'waltz': {
         // Waltz: Bass root on beat 1, higher chord triad on beats 2 & 3
         const rootNote = notes[0] || `${chord.root}3`;
-        // Beat 1: Bass note
-        const t1 = window.setTimeout(() => {
-          if (!this.isPlayingSequence && !this.isPlayingMelody) return;
-          this.playSingleNote(rootNote, instrument, secondsPerBeat * 0.9, 0.9, octaveOffset);
-        }, 0);
-        this.sequenceTimeoutIds.push(t1);
-
-        // Beat 2 & 3: Strum
-        [1, 2].forEach((beat) => {
-          const tBeat = window.setTimeout(() => {
-            if (!this.isPlayingSequence && !this.isPlayingMelody) return;
-            this.playChord(chord, instrument, secondsPerBeat * 0.85, octaveOffset);
-          }, beat * secondsPerBeat * 1000);
-          this.sequenceTimeoutIds.push(tBeat);
-        });
+        for (let m = 0; m < totalBeats; m += 3) {
+          if (m < totalBeats) {
+            const t1 = window.setTimeout(() => {
+              if (!this.isPlayingSequence && !this.isPlayingMelody) return;
+              this.playSingleNote(rootNote, instrument, secondsPerBeat * 0.9, 0.9, octaveOffset);
+            }, m * secondsPerBeat * 1000);
+            this.sequenceTimeoutIds.push(t1);
+          }
+          for (let b = 1; b < 3; b++) {
+            if (m + b < totalBeats) {
+              const tBeat = window.setTimeout(() => {
+                if (!this.isPlayingSequence && !this.isPlayingMelody) return;
+                this.playChord(chord, instrument, secondsPerBeat * 0.85, octaveOffset);
+              }, (m + b) * secondsPerBeat * 1000);
+              this.sequenceTimeoutIds.push(tBeat);
+            }
+          }
+        }
         break;
       }
 

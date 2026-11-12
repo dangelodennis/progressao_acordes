@@ -115,6 +115,24 @@ export interface SavedMelodyConfig {
   scaleType?: string;
 }
 
+export interface ChordDurationOption {
+  beats: number;
+  label: string;
+  shortLabel: string;
+  noteFigure: string;
+  measureText: string;
+  description: string;
+}
+
+export const CHORD_DURATION_OPTIONS: ChordDurationOption[] = [
+  { beats: 1, label: '1 Tempo (1/4 Compasso)', shortLabel: '1t', noteFigure: '♩', measureText: '1/4 comp.', description: 'Semínima - rápida transição harmônica' },
+  { beats: 2, label: '2 Tempos (1/2 Compasso)', shortLabel: '2t', noteFigure: '𝅗𝅥', measureText: '1/2 comp.', description: 'Mínima - divide o compasso em 2 acordes' },
+  { beats: 3, label: '3 Tempos (3/4 Compasso)', shortLabel: '3t', noteFigure: '𝅗𝅥.', measureText: '3/4 comp.', description: 'Mínima pontuada - valsa ou síncope' },
+  { beats: 4, label: '4 Tempos (1 Compasso Inteiro)', shortLabel: '4t', noteFigure: '𝅝', measureText: '1 comp.', description: 'Semibreve - compasso completo padrão 4/4' },
+  { beats: 6, label: '6 Tempos (1.5 Compassos)', shortLabel: '6t', noteFigure: '𝅝+𝅗𝅥', measureText: '1.5 comp.', description: 'Compasso composto / prolongado' },
+  { beats: 8, label: '8 Tempos (2 Compassos Inteiros)', shortLabel: '8t', noteFigure: '2×𝅝', measureText: '2 comp.', description: 'Dois compassos - acorde de repouso ou introdução' },
+];
+
 export interface SavedProgression {
   id: string;
   name: string;
@@ -124,8 +142,10 @@ export interface SavedProgression {
   tempoBpm: number;
   instrument: InstrumentType;
   createdAt: number;
+  updatedAt?: number;
   isPreset?: boolean;
   melody?: SavedMelodyConfig;
+  chordDurations?: number[];
 }
 
 export type MelodyStyle = 'lyrical' | 'riff' | 'arpeggio' | 'blues' | 'ambient';

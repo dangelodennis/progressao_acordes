@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TimelineChordItem, ChordDefinition, InstrumentType, ChordRhythmPattern, BackingTrackStyle } from '../types';
+import { TimelineChordItem, ChordDefinition, InstrumentType, ChordRhythmPattern, BackingTrackStyle, CHORD_DURATION_OPTIONS } from '../types';
 import { audioEngine } from '../utils/audioPlayer';
 import { getSemitone } from '../utils/melodyGenerator';
 import { PREFERRED_ROOT_NAMES, getTimelineKeyRoot } from '../utils/transposition';
@@ -13,6 +13,8 @@ import {
   ArrowLeft,
   ArrowRight,
   Plus,
+  Minus,
+  Clock,
   Volume2,
   VolumeX,
   Music2,
@@ -24,6 +26,7 @@ import {
   Disc,
   ArrowUpDown,
   RotateCcw,
+  Dices,
 } from 'lucide-react';
 
 interface ChordTimelineProps {
@@ -42,10 +45,12 @@ interface ChordTimelineProps {
   onInstrumentChange: (inst: InstrumentType) => void;
   onUpdateChordOctave?: (index: number, newOctaveOffset: number) => void;
   onUpdateChordRhythm?: (index: number, newRhythm: ChordRhythmPattern) => void;
+  onUpdateChordDuration?: (index: number, newDurationBeats: number) => void;
   activeBackingStyle?: BackingTrackStyle;
   onBackingStyleChange?: (style: BackingTrackStyle) => void;
   onTransposeProgression?: (deltaSemitones: number) => void;
   totalTransposition?: number;
+  onGenerateRandomProgression?: () => void;
 }
 
 export const ChordTimeline: React.FC<ChordTimelineProps> = ({
@@ -64,10 +69,12 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
   onInstrumentChange,
   onUpdateChordOctave,
   onUpdateChordRhythm,
+  onUpdateChordDuration,
   activeBackingStyle,
   onBackingStyleChange,
   onTransposeProgression,
   totalTransposition = 0,
+  onGenerateRandomProgression,
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playingStep, setPlayingStep] = useState<number | null>(null);
@@ -200,6 +207,35 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
     audioEngine.playChord(timeline[index].chord, instrument, 1.0, next);
   };
 
+  const DURATION_STEPS = [1, 2, 3, 4, 6, 8];
+
+  const handleStepChordDuration = (e: React.MouseEvent, index: number, direction: -1 | 1) => {
+    e.stopPropagation();
+    if (!onUpdateChordDuration) return;
+    const current = timeline[index].durationBeats || 4;
+    let next: number;
+    if (direction === -1) {
+      const smaller = DURATION_STEPS.filter((s) => s < current);
+      next = smaller.length > 0 ? smaller[smaller.length - 1] : 1;
+    } else {
+      const larger = DURATION_STEPS.filter((s) => s > current);
+      next = larger.length > 0 ? larger[0] : 8;
+    }
+    onUpdateChordDuration(index, next);
+  };
+
+  const handleSelectChordDuration = (e: React.ChangeEvent<HTMLSelectElement>, index: number) => {
+    e.stopPropagation();
+    if (!onUpdateChordDuration) return;
+    const val = parseInt(e.target.value, 10);
+    if (!isNaN(val) && val > 0) {
+      onUpdateChordDuration(index, val);
+    }
+  };
+
+  const totalProgressionBeats = timeline.reduce((acc, it) => acc + (it.durationBeats || 4), 0);
+  const totalProgressionSeconds = Math.round((totalProgressionBeats * 60) / tempoBpm);
+
   return (
     <div
       id="chord-timeline-container"
@@ -212,16 +248,22 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
             <Music2 className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-medium text-slate-200 flex items-center gap-2">
+            <h2 className="text-sm font-medium text-slate-200 flex items-center gap-2 flex-wrap">
               <span>Linha do Tempo</span>
               <span className="text-[10px] font-normal px-2 py-0.5 rounded-none bg-[#1a1e28] text-slate-400 border border-[#272d3e]">
                 {timeline.length} {timeline.length === 1 ? 'acorde' : 'acordes'}
               </span>
+              {timeline.length > 0 && (
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-none bg-amber-950/40 text-amber-300 border border-amber-800/50 flex items-center gap-1" title="Duração total da progressão">
+                  <Clock className="w-2.5 h-2.5 text-amber-400" />
+                  <span>{totalProgressionBeats} tempos ({(totalProgressionBeats / 4).toFixed(1)} comp. • ~{totalProgressionSeconds}s)</span>
+                </span>
+              )}
             </h2>
             <p className="text-xs text-slate-400 font-light">
               {timeline.length === 0
                 ? 'Selecione ou clique em um acorde para iniciar a sequência'
-                : 'Clique nos acordes para ouvir e inspecionar suas oitavas e escalas'}
+                : 'Ajuste tempos, oitavas, ritmo e tonalidade de cada acorde na progressão'}
             </p>
           </div>
         </div>
@@ -324,6 +366,20 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
               title="Parar"
             >
               <Square className="w-3.5 h-3.5 fill-current" />
+            </button>
+          )}
+
+          {/* Generate Random Progression Button */}
+          {onGenerateRandomProgression && (
+            <button
+              id="btn-generate-random-timeline"
+              type="button"
+              onClick={onGenerateRandomProgression}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-none bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-medium text-xs border border-amber-500/40 transition-all active:translate-y-0.5 shadow-xs"
+              title="Gerar uma nova progressão harmônica aleatória baseada no estilo musical selecionado"
+            >
+              <Dices className="w-3.5 h-3.5 text-amber-400" />
+              <span>Gerar Aleatória</span>
             </button>
           )}
 
@@ -563,15 +619,29 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
             <p className="text-[11px] text-slate-400 font-light max-w-sm mt-0.5 mb-3">
               Escolha um acorde recomendado abaixo ou busque um acorde específico para ver sugestões inteligentes imediatas.
             </p>
-            <button
-              id="btn-open-picker-empty"
-              type="button"
-              onClick={onOpenPickerModal}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-none bg-[#1e2330] hover:bg-[#252c3d] text-slate-200 text-xs font-normal border border-[#2d3448] shadow-xs transition-all"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Escolher 1º Acorde</span>
-            </button>
+            <div className="flex items-center gap-2 flex-wrap justify-center">
+              <button
+                id="btn-open-picker-empty"
+                type="button"
+                onClick={onOpenPickerModal}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-none bg-[#1e2330] hover:bg-[#252c3d] text-slate-200 text-xs font-normal border border-[#2d3448] shadow-xs transition-all"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Escolher 1º Acorde</span>
+              </button>
+
+              {onGenerateRandomProgression && (
+                <button
+                  id="btn-generate-random-empty"
+                  type="button"
+                  onClick={onGenerateRandomProgression}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-none bg-amber-600/80 hover:bg-amber-500/80 text-white text-xs font-medium border border-amber-500/50 shadow-xs transition-all active:translate-y-0.5"
+                >
+                  <Dices className="w-3.5 h-3.5" />
+                  <span>Gerar Progressão Aleatória</span>
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <div className="flex items-center gap-2.5 pb-1">
@@ -579,6 +649,12 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
               const isSelected = selectedIndex === index;
               const isCurrentlyPlaying = isPlaying && playingStep === index;
               const octOffset = item.octaveOffset ?? 0;
+              const itemDuration = item.durationBeats || 4;
+
+              // Precompute beat position and measure
+              const startBeat = timeline.slice(0, index).reduce((acc, it) => acc + (it.durationBeats || 4), 0);
+              const measureNum = Math.floor(startBeat / 4) + 1;
+              const beatInMeasure = (startBeat % 4) + 1;
 
               return (
                 <div
@@ -586,16 +662,19 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
                   id={`timeline-chord-${index}`}
                   className="relative group shrink-0"
                 >
-                  {/* Measure / Bar Label */}
+                  {/* Measure / Bar Label & Duration */}
                   <div className="flex items-center justify-between text-[9px] font-normal text-slate-400 mb-1 px-0.5">
-                    <span>Comp. {index + 1}</span>
-                    <span>4/4</span>
+                    <span className="font-mono">Comp. {measureNum}{beatInMeasure > 1 ? `.${beatInMeasure}` : ''}</span>
+                    <span className="flex items-center gap-0.5 text-amber-300 font-mono text-[9px]" title={`Duração: ${itemDuration} tempos`}>
+                      <Clock className="w-2.5 h-2.5 text-amber-400/90" />
+                      <span>{itemDuration}t</span>
+                    </span>
                   </div>
 
                   {/* Chord Block (Square) */}
                   <div
                     onClick={() => handleChordClick(index)}
-                    className={`relative w-26 h-20 rounded-none p-2 flex flex-col justify-between cursor-pointer transition-all select-none border ${
+                    className={`relative w-28 h-20 rounded-none p-2 flex flex-col justify-between cursor-pointer transition-all select-none border ${
                       isCurrentlyPlaying
                         ? 'bg-[#222838] text-slate-100 border-indigo-400 ring-1 ring-indigo-400/40 shadow-xs'
                         : isSelected
@@ -619,10 +698,15 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
                       </span>
                     </div>
 
-                    {/* Scale Notes Preview & Octave info */}
+                    {/* Scale Notes Preview & Badges (Duration, Octave, Rhythm) */}
                     <div className="flex items-center justify-between text-[9px] font-light text-slate-400 truncate">
                       <span className="truncate">{item.chord.noteNames.join(' ')}</span>
                       <div className="flex items-center gap-1 shrink-0 ml-1">
+                        {itemDuration !== 4 && (
+                          <span className="text-[9px] font-mono font-medium px-1 rounded-none bg-amber-950/50 text-amber-300 border border-amber-700/50" title={`Duração: ${itemDuration} tempos`}>
+                            {itemDuration}t
+                          </span>
+                        )}
                         {octOffset !== 0 && (
                           <span className={`text-[9px] font-medium px-1 rounded-none border ${
                             octOffset > 0
@@ -645,6 +729,46 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
                     {isCurrentlyPlaying && (
                       <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400/80 rounded-none animate-pulse border border-black" />
                     )}
+                  </div>
+
+                  {/* Duration Stepper & Selector Row (Requirement: Aumentar ou diminuir o tempo de um acorde) */}
+                  <div className="mt-1 px-0.5 flex items-center justify-between gap-1 bg-[#12151e] border border-[#232838] p-0.5" title="Duração do acorde (Tempos / Compassos)">
+                    <button
+                      id={`btn-decrease-duration-${index}`}
+                      type="button"
+                      disabled={itemDuration <= 1}
+                      onClick={(e) => handleStepChordDuration(e, index, -1)}
+                      className="p-1 rounded-none bg-[#181c28] hover:bg-[#222838] text-slate-400 hover:text-amber-300 border border-[#272e42] disabled:opacity-20 text-[10px] transition-colors active:translate-y-0.5"
+                      title="Diminuir tempo deste acorde (-)"
+                    >
+                      <Minus className="w-2.5 h-2.5" />
+                    </button>
+
+                    <select
+                      id={`select-chord-duration-${index}`}
+                      value={itemDuration}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => handleSelectChordDuration(e, index)}
+                      className="flex-1 min-w-0 bg-transparent text-amber-300 font-mono text-[10px] font-medium text-center focus:outline-none cursor-pointer py-0.5 px-0.5"
+                      title="Duração em tempos do acorde"
+                    >
+                      {CHORD_DURATION_OPTIONS.map((opt) => (
+                        <option key={opt.beats} value={opt.beats} className="bg-[#141720] text-slate-200">
+                          {opt.shortLabel} ({opt.measureText})
+                        </option>
+                      ))}
+                    </select>
+
+                    <button
+                      id={`btn-increase-duration-${index}`}
+                      type="button"
+                      disabled={itemDuration >= 8}
+                      onClick={(e) => handleStepChordDuration(e, index, 1)}
+                      className="p-1 rounded-none bg-[#181c28] hover:bg-[#222838] text-slate-400 hover:text-amber-300 border border-[#272e42] disabled:opacity-20 text-[10px] transition-colors active:translate-y-0.5"
+                      title="Aumentar tempo deste acorde (+)"
+                    >
+                      <Plus className="w-2.5 h-2.5" />
+                    </button>
                   </div>
 
                   {/* Rhythm selector dropdown directly underneath chord block */}

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ChordDefinition, DisplayMode, InstrumentType, TimelineChordItem } from '../types';
+import { ChordDefinition, DisplayMode, InstrumentType, TimelineChordItem, CHORD_DURATION_OPTIONS } from '../types';
 import { GuitarChordDiagram } from './GuitarChordDiagram';
 import { PianoChordDiagram } from './PianoChordDiagram';
 import { audioEngine } from '../utils/audioPlayer';
@@ -9,6 +9,8 @@ import {
   Sparkles,
   Play,
   Plus,
+  Minus,
+  Clock,
   BookOpen,
   Layers,
   ArrowUp,
@@ -30,6 +32,7 @@ interface ChordInspectorProps {
   isInTimeline?: boolean;
   octaveOffset: number;
   onOctaveChange: (offset: number) => void;
+  onUpdateChordDuration?: (newDurationBeats: number) => void;
 }
 
 export const ChordInspector: React.FC<ChordInspectorProps> = ({
@@ -43,6 +46,7 @@ export const ChordInspector: React.FC<ChordInspectorProps> = ({
   isInTimeline = false,
   octaveOffset,
   onOctaveChange,
+  onUpdateChordDuration,
 }) => {
   const [isPlayingScale, setIsPlayingScale] = useState(false);
   const [isExpandChordOpen, setIsExpandChordOpen] = useState(true);
@@ -93,6 +97,24 @@ export const ChordInspector: React.FC<ChordInspectorProps> = ({
     if (offset === 1) return 'Aguda (+1 Oitava / 5ª Oitava)';
     if (offset === 2) return 'Muito Aguda (+2 Oitavas / 6ª Oitava)';
     return `${offset > 0 ? `+${offset}` : offset} Oitavas`;
+  };
+
+  const currentDuration = selectedTimelineChord?.durationBeats || 4;
+  const currentDurationOpt = CHORD_DURATION_OPTIONS.find((o) => o.beats === currentDuration);
+  const DURATION_STEPS = [1, 2, 3, 4, 6, 8];
+
+  const handleDecreaseDuration = () => {
+    if (!onUpdateChordDuration) return;
+    const smaller = DURATION_STEPS.filter((s) => s < currentDuration);
+    const next = smaller.length > 0 ? smaller[smaller.length - 1] : 1;
+    onUpdateChordDuration(next);
+  };
+
+  const handleIncreaseDuration = () => {
+    if (!onUpdateChordDuration) return;
+    const larger = DURATION_STEPS.filter((s) => s > currentDuration);
+    const next = larger.length > 0 ? larger[0] : 8;
+    onUpdateChordDuration(next);
   };
 
   // Compute displayed note names with octave (e.g. C4, E4, G4 or C3, E3, G3)
