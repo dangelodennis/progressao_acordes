@@ -20,7 +20,13 @@ import {
   Maximize2,
   Music,
   Sparkles,
+  Download,
+  Wifi,
+  WifiOff,
+  CheckCircle2,
 } from 'lucide-react';
+import { usePWAInstall } from '../hooks/usePWAInstall';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -53,6 +59,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   isMobileFrameMode,
   onToggleMobileFrameMode,
 }) => {
+  const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
+  const isOnline = useOnlineStatus();
+
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -360,6 +369,62 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {isMobileFrameMode ? 'Celular' : 'Tela Cheia'}
               </span>
             </button>
+          </div>
+        </div>
+
+        {/* Section 4: PWA Installation & Offline Mode */}
+        <div className="pt-3 border-t border-[#202535] space-y-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <h4 className="text-xs font-medium uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+              <Download className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Aplicativo Instalável (PWA)</span>
+            </h4>
+            <span
+              className={`text-[10px] font-mono px-2 py-0.5 border flex items-center gap-1 ${
+                isOnline
+                  ? 'bg-emerald-950/40 text-emerald-300 border-emerald-700/40'
+                  : 'bg-amber-950/40 text-amber-300 border-amber-700/40'
+              }`}
+            >
+              {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+              <span>{isOnline ? 'Online • Cache Offline Pronto' : 'Modo Offline'}</span>
+            </span>
+          </div>
+
+          <div className="p-3 bg-[#151822] border border-[#242a3b] flex flex-wrap items-center justify-between gap-2.5">
+            <div className="space-y-0.5 min-w-0 flex-1">
+              <div className="text-xs font-medium text-slate-200 flex items-center gap-1.5">
+                {isInstalled ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>Aplicativo instalado (Modo Standalone)</span>
+                  </>
+                ) : (
+                  <span>Instalar no Celular ou Computador</span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-400 font-light leading-snug">
+                {isInstalled
+                  ? 'Você está executando o Progressão de Acordes como aplicativo nativo com suporte offline.'
+                  : isInstallable
+                  ? 'Adicione o estúdio à sua tela inicial para abrir em janela própria e usar mesmo sem internet.'
+                  : isIOS
+                  ? 'No Safari (iPhone/iPad): toque em Compartilhar e depois em "Adicionar à Tela de Início".'
+                  : 'No navegador (Chrome/Edge), use o ícone de instalar na barra de endereço ou menu → "Instalar Progressão de Acordes".'}
+              </p>
+            </div>
+
+            {!isInstalled && isInstallable && (
+              <button
+                id="btn-settings-install-pwa"
+                type="button"
+                onClick={() => void install()}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-none bg-emerald-700/85 hover:bg-emerald-600/85 text-white text-xs font-medium border border-emerald-500/50 transition-colors shrink-0 active:translate-y-0.5"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Instalar Agora</span>
+              </button>
+            )}
           </div>
         </div>
 

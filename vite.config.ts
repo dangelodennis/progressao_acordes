@@ -10,8 +10,10 @@ export default defineConfig(() => {
       react(),
       tailwindcss(),
       VitePWA({
-        registerType: 'autoUpdate',
+        registerType: 'prompt',
+        injectRegister: false,
         includeAssets: [
+          'favicon.ico',
           'favicon.png',
           'apple-touch-icon.png',
           'icon.svg',
@@ -20,7 +22,6 @@ export default defineConfig(() => {
           'pwa-maskable-512x512.png',
           'screenshot-mobile.png',
           'screenshot-desktop.png',
-          'sw.js',
           'widget.json',
           'widget-data.json',
         ],
@@ -216,6 +217,8 @@ export default defineConfig(() => {
           ],
         } as any,
         workbox: {
+          cleanupOutdatedCaches: true,
+          navigateFallbackDenylist: [/^\/__\/auth/],
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
           runtimeCaching: [
@@ -250,7 +253,8 @@ export default defineConfig(() => {
           ],
         },
         devOptions: {
-          enabled: false,
+          enabled: true,
+          type: 'module',
         },
       }),
     ],

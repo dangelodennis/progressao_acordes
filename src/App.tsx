@@ -37,6 +37,7 @@ import { ExportPdfModal } from './components/ExportPdfModal';
 import { SettingsModal } from './components/SettingsModal';
 import { downloadMidiFile } from './utils/midiExport';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { PWAUpdateToast } from './components/PWAUpdateToast';
 import { useAuth } from './context/AuthContext';
 import { useSyncProgressions } from './utils/useSyncProgressions';
 import { transposeTimeline, transposeMelody } from './utils/transposition';
@@ -278,7 +279,66 @@ export default function App() {
       document.documentElement.classList.add('light');
       document.documentElement.classList.remove('dark');
     }
+
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeMeta) {
+      themeMeta.setAttribute('content', isDarkMode ? '#15171e' : '#f8fafc');
+    }
   }, [isDarkMode]);
+
+  // Handle PWA launch shortcuts, protocol handlers (?chord=...), and instrument deep-links
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const action = params.get('action');
+      const inst = params.get('instrument');
+      const chordParam = params.get('chord');
+
+      if (inst === 'piano' || inst === 'guitar') {
+        setInstrument(inst);
+      }
+
+      if (action === 'new') {
+        setTimeline([]);
+        setSelectedIndex(null);
+        setSongTitle('');
+        setSongArtist('');
+        setSongLyrics('');
+        setGeneratedProgInfo(null);
+      } else if (action === 'favorites') {
+        setIsFavoritesOpen(true);
+      }
+
+      if (chordParam) {
+        const cleaned = chordParam.replace(/^web\+harmoniq:\/{0,2}/i, '').trim();
+        const found =
+          CHORD_DATABASE[cleaned] ||
+          Object.values(CHORD_DATABASE).find(
+            (c) => c.symbol.toLowerCase() === cleaned.toLowerCase()
+          );
+        if (found) {
+          setInspectedChord(found);
+          setTimeline([
+            {
+              id: `pwa-launch-${Date.now()}`,
+              chord: found,
+              durationBeats: 4,
+              genreContext: selectedGenre,
+              octaveOffset: 0,
+            },
+          ]);
+          setSelectedIndex(0);
+        }
+      }
+
+      if (action || inst || chordParam) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    } catch {
+      // ignore invalid query params
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Adjust default BPM, Instrument and Backing Track groove when genre changes
   const handleGenreChange = (newGenre: Genre) => {
@@ -962,6 +1022,7 @@ export default function App() {
       />
 
       <OfflineIndicator />
+      <PWAUpdateToast />
     </div>
   );
 }
