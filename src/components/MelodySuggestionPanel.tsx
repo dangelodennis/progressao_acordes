@@ -42,6 +42,8 @@ interface MelodySuggestionPanelProps {
   loadedMelody?: SavedMelodyConfig | null;
   onMelodyChange?: (melody: SavedMelodyConfig) => void;
   onOpenExportMidi?: () => void;
+  isExpanded?: boolean;
+  onToggleExpanded?: () => void;
 }
 
 export const MelodySuggestionPanel: React.FC<MelodySuggestionPanelProps> = ({
@@ -53,6 +55,8 @@ export const MelodySuggestionPanel: React.FC<MelodySuggestionPanelProps> = ({
   loadedMelody,
   onMelodyChange,
   onOpenExportMidi,
+  isExpanded: controlledExpanded,
+  onToggleExpanded,
 }) => {
   // Visualizer Mode: 'guitar' or 'piano'
   const [visualizerMode, setVisualizerMode] = useState<'guitar' | 'piano'>('guitar');
@@ -79,14 +83,23 @@ export const MelodySuggestionPanel: React.FC<MelodySuggestionPanelProps> = ({
   const [activeNoteIndex, setActiveNoteIndex] = useState<number | null>(null);
   const [activeChordIndex, setActiveChordIndex] = useState<number | null>(null);
 
-  // Collapsible toggle for compact view if needed
-  const [isExpanded, setIsExpanded] = useState<boolean>(true);
+  // Collapsible toggle synced with parent when provided
+  const [internalExpanded, setInternalExpanded] = useState<boolean>(true);
+  const isExpanded = controlledExpanded ?? internalExpanded;
+  const handleToggleExpanded = () => {
+    if (onToggleExpanded) onToggleExpanded();
+    else setInternalExpanded((prev) => !prev);
+  };
 
   // Sync loaded melody when user loads a saved progression
   const lastLoadedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (loadedMelody && loadedMelody.id !== lastLoadedIdRef.current) {
+    if (!loadedMelody) {
+      lastLoadedIdRef.current = null;
+      return;
+    }
+    if (loadedMelody.id !== lastLoadedIdRef.current) {
       lastLoadedIdRef.current = loadedMelody.id;
       if (loadedMelody.style) setSelectedStyle(loadedMelody.style);
       if (loadedMelody.instrument) setMelodyInstrument(loadedMelody.instrument);
@@ -152,7 +165,7 @@ export const MelodySuggestionPanel: React.FC<MelodySuggestionPanelProps> = ({
   useEffect(() => {
     if (currentSuggestion && onMelodyChange) {
       // Create a stable fingerprint to prevent cyclical re-renders
-      const fingerprint = `${currentSuggestion.id}-${selectedStyle}-${melodyInstrument}-${melodyOctaveOffset}-${variationSeed}-${selectedScaleType}`;
+      const fingerprint = `${currentSuggestion.id}-${selectedStyle}-${melodyInstrument}-${melodyOctaveOffset}-${variationSeed}-${selectedScaleType}-${currentSuggestion.totalBeats}-${currentSuggestion.notes.length}`;
       if (lastEmittedRef.current === fingerprint) {
         return;
       }
@@ -321,7 +334,7 @@ export const MelodySuggestionPanel: React.FC<MelodySuggestionPanelProps> = ({
       className="bg-[#12151d] border border-[#232836] rounded-none p-3.5 sm:p-4 shadow-sm"
     >
       {/* Panel Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-[#202534] flex-wrap gap-2">
+      <div className={`flex items-center justify-between flex-wrap gap-2 ${isExpanded ? 'pb-3 border-b border-[#202534]' : ''}`}>
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-none bg-[#181c28] border border-[#252c40] text-indigo-400 flex items-center justify-center">
             <Sparkles className="w-4 h-4" />
@@ -342,13 +355,15 @@ export const MelodySuggestionPanel: React.FC<MelodySuggestionPanelProps> = ({
         </div>
 
         <button
+          id="btn-toggle-melody-panel"
           type="button"
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="p-1 rounded-none text-slate-400 hover:text-slate-200 border border-[#232836] hover:bg-[#181c26] transition-colors"
+          onClick={handleToggleExpanded}
+          className="p-1.5 rounded-none text-slate-400 hover:text-slate-200 border border-[#232836] bg-[#181c26] hover:bg-[#202534] transition-colors"
           title={isExpanded ? 'Recolher Painel' : 'Expandir Painel'}
+          aria-expanded={isExpanded}
         >
           <ChevronDown
-            className={`w-4 h-4 transition-transform duration-150 ${
+            className={`w-3.5 h-3.5 transition-transform duration-150 ${
               isExpanded ? 'rotate-180' : ''
             }`}
           />

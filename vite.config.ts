@@ -255,14 +255,32 @@ export default defineConfig(() => {
       }),
     ],
     resolve: {
+      dedupe: ['react', 'react-dom'],
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
+    },
+    optimizeDeps: {
+      include: [
+        'react',
+        'react-dom',
+        'react-dom/client',
+        'react/jsx-runtime',
+        'react/jsx-dev-runtime',
+        'firebase/app',
+        'firebase/auth',
+        'firebase/firestore',
+        'jspdf',
+        'lucide-react',
+      ],
     },
     server: {
       port: 3000,
       host: '0.0.0.0',
       strictPort: true,
+      headers: {
+        'Cache-Control': 'no-store',
+      },
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },

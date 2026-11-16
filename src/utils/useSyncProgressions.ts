@@ -138,6 +138,8 @@ export function useSyncProgressions(user: User | null) {
             updatedAt,
             isPreset: false,
             melody: data.melody || undefined,
+            chordDurations: Array.isArray(data.chordDurations) ? data.chordDurations : undefined,
+            lyrics: typeof data.lyrics === 'string' ? data.lyrics : undefined,
           });
         });
 
@@ -204,9 +206,11 @@ export function useSyncProgressions(user: User | null) {
               description: newProg.description || '',
               genre: newProg.genre,
               chords: newProg.chords,
+              chordDurations: newProg.chordDurations || null,
               tempoBpm: newProg.tempoBpm,
               instrument: newProg.instrument,
               melody: newProg.melody || null,
+              lyrics: newProg.lyrics || null,
               createdAt: newProg.createdAt ? new Date(newProg.createdAt) : serverTimestamp(),
               updatedAt: serverTimestamp(),
             },
@@ -286,6 +290,7 @@ export function useSyncProgressions(user: User | null) {
                     description: item.description || '',
                     genre: item.genre,
                     chords: item.chords,
+                    chordDurations: item.chordDurations || null,
                     tempoBpm: item.tempoBpm,
                     instrument: item.instrument,
                     melody: item.melody || null,

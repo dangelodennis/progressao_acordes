@@ -9,6 +9,8 @@ import {
   SavedMelodyConfig,
   ChordRhythmPattern,
   BackingTrackStyle,
+  ChordTimbre,
+  ChordPlaybackStyle,
 } from './types';
 import {
   CHORD_DATABASE,
@@ -23,20 +25,44 @@ import { MelodySuggestionPanel } from './components/MelodySuggestionPanel';
 import { ChordSuggestions } from './components/ChordSuggestions';
 import { ChordInspector } from './components/ChordInspector';
 import { ScaleDictionaryPanel } from './components/ScaleDictionaryPanel';
+import { ImprovisationGuidePanel } from './components/ImprovisationGuidePanel';
+import { TutorialPage, TutorialPanelTarget } from './components/TutorialPage';
 import { ChordPickerModal } from './components/ChordPickerModal';
 import {
   FavoritesLibrary,
   SaveProgressionModal,
 } from './components/FavoritesLibrary';
 import { ExportMidiModal } from './components/ExportMidiModal';
+import { ExportPdfModal } from './components/ExportPdfModal';
+import { SettingsModal } from './components/SettingsModal';
 import { downloadMidiFile } from './utils/midiExport';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { useAuth } from './context/AuthContext';
 import { useSyncProgressions } from './utils/useSyncProgressions';
 import { transposeTimeline, transposeMelody } from './utils/transposition';
-import { generateRandomProgressionForGenre } from './utils/progressionGenerator';
+import { generateRandomProgressionForGenre, GeneratedProgression } from './utils/progressionGenerator';
 
 const LOCAL_STORAGE_KEY = 'harmoniq_saved_progressions';
+const PANEL_STATE_STORAGE_KEY = 'harmoniq_panels_expanded';
+
+type PanelKey =
+  | 'genre'
+  | 'timeline'
+  | 'suggestions'
+  | 'melody'
+  | 'scales'
+  | 'improvisation'
+  | 'inspector';
+
+const DEFAULT_PANELS_EXPANDED: Record<PanelKey, boolean> = {
+  genre: true,
+  timeline: true,
+  suggestions: true,
+  melody: true,
+  scales: true,
+  improvisation: true,
+  inspector: true,
+};
 
 export default function App() {
   // Application State
@@ -71,11 +97,116 @@ export default function App() {
   // Octave Offset for currently inspected chord (-2, -1, 0, +1, +2)
   const [inspectedOctaveOffset, setInspectedOctaveOffset] = useState<number>(0);
 
+  // Audio Engine Chord Timbre
+  const [chordTimbre, setChordTimbre] = useState<ChordTimbre>(() => {
+    return audioEngine.getChordTimbre();
+  });
+
+  const handleChordTimbreChange = useCallback((newTimbre: ChordTimbre) => {
+    setChordTimbre(newTimbre);
+    audioEngine.setChordTimbre(newTimbre);
+  }, []);
+
+  // Audio Engine Individual Chord Playback Style ('block' | 'arpeggio')
+  const [chordPlaybackStyle, setChordPlaybackStyle] = useState<ChordPlaybackStyle>(() => {
+    return audioEngine.getChordPlaybackStyle();
+  });
+
+  const handleChordPlaybackStyleChange = useCallback((newStyle: ChordPlaybackStyle) => {
+    setChordPlaybackStyle(newStyle);
+    audioEngine.setChordPlaybackStyle(newStyle);
+  }, []);
+
   // Modals state
   const [isFavoritesOpen, setIsFavoritesOpen] = useState<boolean>(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState<boolean>(false);
   const [isPickerOpen, setIsPickerOpen] = useState<boolean>(false);
   const [isMidiModalOpen, setIsMidiModalOpen] = useState<boolean>(false);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState<boolean>(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+
+  // Active top-level view ('studio' | 'tutorial')
+  const [activeView, setActiveView] = useState<'studio' | 'tutorial'>('studio');
+
+  // Song metadata & optional lyrics for PDF export and saved progressions
+  const [songTitle, setSongTitle] = useState<string>('');
+  const [songArtist, setSongArtist] = useState<string>('');
+  const [songLyrics, setSongLyrics] = useState<string>('');
+
+  // Shared Scale Selection between ScaleDictionaryPanel & ImprovisationGuidePanel
+  const [selectedScaleRoot, setSelectedScaleRoot] = useState<string>('C');
+  const [selectedScaleId, setSelectedScaleId] = useState<string>('ionian');
+
+  // Panel Collapse / Expand State (persisted in localStorage)
+  const [panelsExpanded, setPanelsExpanded] = useState<Record<PanelKey, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem(PANEL_STATE_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          return { ...DEFAULT_PANELS_EXPANDED, ...parsed };
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return DEFAULT_PANELS_EXPANDED;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PANEL_STATE_STORAGE_KEY, JSON.stringify(panelsExpanded));
+    } catch {
+      // ignore
+    }
+  }, [panelsExpanded]);
+
+  const togglePanel = useCallback((key: PanelKey) => {
+    setPanelsExpanded((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  }, []);
+
+  const expandPanel = useCallback((key: PanelKey) => {
+    setPanelsExpanded((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
+  }, []);
+
+  const allPanelsCollapsed = useMemo(
+    () => !Object.values(panelsExpanded).some(Boolean),
+    [panelsExpanded]
+  );
+
+  const handleToggleAllPanels = useCallback(() => {
+    const targetState = allPanelsCollapsed;
+    setPanelsExpanded({
+      genre: targetState,
+      timeline: targetState,
+      suggestions: targetState,
+      melody: targetState,
+      scales: targetState,
+      improvisation: targetState,
+      inspector: targetState,
+    });
+  }, [allPanelsCollapsed]);
+
+  const handleOpenStudioPanel = useCallback(
+    (panelKey: TutorialPanelTarget, elementId?: string) => {
+      setActiveView('studio');
+      expandPanel(panelKey);
+      window.setTimeout(() => {
+        if (elementId) {
+          const el = document.getElementById(elementId);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+          }
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 60);
+    },
+    [expandPanel]
+  );
 
   // Timeline State (starts with initial chord C in Pop mode for instant joy)
   const [timeline, setTimeline] = useState<TimelineChordItem[]>([
@@ -101,6 +232,9 @@ export default function App() {
   // Cumulative semitones shifted by transposition
   const [totalTransposition, setTotalTransposition] = useState<number>(0);
 
+  // Latest randomly generated progression metadata for visible timeline banner
+  const [generatedProgInfo, setGeneratedProgInfo] = useState<GeneratedProgression | null>(null);
+
   const handleMelodyChange = useCallback((melody: SavedMelodyConfig) => {
     setCurrentMelodyConfig((prev) => {
       if (
@@ -110,7 +244,9 @@ export default function App() {
         prev.instrument === melody.instrument &&
         prev.octaveOffset === melody.octaveOffset &&
         prev.variationSeed === melody.variationSeed &&
-        prev.scaleType === melody.scaleType
+        prev.scaleType === melody.scaleType &&
+        prev.totalBeats === melody.totalBeats &&
+        prev.notes.length === melody.notes.length
       ) {
         return prev;
       }
@@ -289,6 +425,19 @@ export default function App() {
     }
   };
 
+  // Update duration (beats) of specific timeline item
+  const handleUpdateChordDuration = (index: number, newDurationBeats: number) => {
+    if (index >= 0 && index < timeline.length) {
+      const clampedDuration = Math.max(1, Math.min(8, newDurationBeats));
+      const copy = [...timeline];
+      copy[index] = {
+        ...copy[index],
+        durationBeats: clampedDuration,
+      };
+      setTimeline(copy);
+    }
+  };
+
   // Remove chord from timeline
   const handleRemoveChord = (index: number) => {
     const updated = timeline.filter((_, idx) => idx !== index);
@@ -319,10 +468,12 @@ export default function App() {
 
   // Clear timeline
   const handleClearTimeline = () => {
-    audioEngine.stopSequence();
+    audioEngine.stopAll();
     setTimeline([]);
     setSelectedIndex(null);
     setTotalTransposition(0);
+    setCurrentMelodyConfig(null);
+    setGeneratedProgInfo(null);
   };
 
   // Transpose the entire progression while preserving harmonic relationships
@@ -358,7 +509,7 @@ export default function App() {
   }, [timeline, selectedIndex, currentMelodyConfig, instrument]);
 
   // Generate a random musical progression tailored to the currently selected genre
-  const handleGenerateRandomProgression = useCallback(() => {
+  const handleGenerateRandomProgression = useCallback((scrollToTimeline = false) => {
     audioEngine.stopAll();
     const result = generateRandomProgressionForGenre(
       selectedGenre,
@@ -369,16 +520,30 @@ export default function App() {
     setTempoBpm(result.tempoBpm);
     setInstrument(result.instrument);
     setTotalTransposition(0);
+    setCurrentMelodyConfig(null);
+    setGeneratedProgInfo(result);
 
     if (result.chords.length > 0) {
+      const firstItem = result.chords[0];
+      const firstOctave = firstItem.octaveOffset ?? 0;
       setSelectedIndex(0);
-      setInspectedChord(result.chords[0].chord);
-      setInspectedOctaveOffset(0);
-      audioEngine.playChord(result.chords[0].chord, result.instrument, 1.4, 0);
+      setInspectedChord(firstItem.chord);
+      setInspectedOctaveOffset(firstOctave);
+      audioEngine.playChord(firstItem.chord, result.instrument, 1.4, firstOctave);
     } else {
       setSelectedIndex(null);
     }
-  }, [selectedGenre, timeline]);
+
+    if (scrollToTimeline) {
+      expandPanel('timeline');
+      window.requestAnimationFrame(() => {
+        const el = document.getElementById('chord-timeline-container');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      });
+    }
+  }, [selectedGenre, timeline, expandPanel]);
 
   // Save or overwrite progression in personal favorites (syncs to Firestore when logged in)
   const handleSaveCurrentProgression = (
@@ -403,12 +568,14 @@ export default function App() {
       description: description || existing?.description || '',
       genre: selectedGenre,
       chords: timeline.map((t) => t.chord),
+      chordDurations: timeline.map((t) => t.durationBeats || 4),
       tempoBpm,
       instrument,
       createdAt: existing?.createdAt || now,
       updatedAt: now,
       isPreset: false,
       melody: includeMelody && currentMelodyConfig ? currentMelodyConfig : undefined,
+      lyrics: songLyrics.trim() ? songLyrics : undefined,
     };
 
     syncSaveProgression(newProg);
@@ -446,7 +613,7 @@ export default function App() {
     const timelineItems: TimelineChordItem[] = validChords.map((c, idx) => ({
       id: `export-${c.id || idx}-${idx}`,
       chord: c,
-      durationBeats: 4,
+      durationBeats: prog.chordDurations?.[idx] ?? 4,
       genreContext: prog.genre,
       octaveOffset: 0,
     }));
@@ -476,31 +643,37 @@ export default function App() {
     const newTimeline: TimelineChordItem[] = validChords.map((c, idx) => ({
       id: `load-${Date.now()}-${idx}`,
       chord: c,
-      durationBeats: 4,
+      durationBeats: prog.chordDurations?.[idx] ?? 4,
       genreContext: prog.genre,
       octaveOffset: 0,
     }));
 
     setTimeline(newTimeline);
     setTotalTransposition(0);
+    setGeneratedProgInfo(null);
+    setSongTitle(prog.name || '');
+    setSongArtist(prog.description || '');
+    setSongLyrics(prog.lyrics || '');
+
+    // Restore saved melody if present, or clear stale melody so panel regenerates cleanly
+    if (prog.melody) {
+      setCurrentMelodyConfig(prog.melody);
+    } else {
+      setCurrentMelodyConfig(null);
+    }
+
     if (newTimeline.length > 0) {
       setSelectedIndex(0);
       setInspectedChord(newTimeline[0].chord);
       setInspectedOctaveOffset(newTimeline[0].octaveOffset ?? 0);
+      audioEngine.playChord(
+        newTimeline[0].chord,
+        prog.instrument || 'piano',
+        1.4,
+        newTimeline[0].octaveOffset ?? 0
+      );
     } else {
       setSelectedIndex(null);
-    }
-
-    // Restore saved melody if present
-    if (prog.melody) {
-      setCurrentMelodyConfig(prog.melody);
-    }
-
-    if (newTimeline.length > 0) {
-      setSelectedIndex(0);
-      setInspectedChord(newTimeline[0].chord);
-      setInspectedOctaveOffset(0);
-      audioEngine.playChord(newTimeline[0].chord, prog.instrument || 'piano', 1.4, 0);
     }
   };
 
@@ -547,12 +720,49 @@ export default function App() {
             syncStatus={syncStatus}
             isSyncing={isSyncing}
             onScrollToScaleDictionary={() => {
-              const el = document.getElementById('scale-dictionary-section');
-              if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }
+              setActiveView('studio');
+              expandPanel('scales');
+              window.setTimeout(() => {
+                const el = document.getElementById('scale-dictionary-section');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              }, 60);
             }}
+            onScrollToImprovisationGuide={() => {
+              setActiveView('studio');
+              expandPanel('improvisation');
+              window.setTimeout(() => {
+                const el = document.getElementById('improvisation-guide-section');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              }, 60);
+            }}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            chordTimbre={chordTimbre}
+            isGenreExpanded={panelsExpanded.genre}
+            onToggleGenreExpanded={() => togglePanel('genre')}
+            allPanelsCollapsed={allPanelsCollapsed}
+            onToggleAllPanels={handleToggleAllPanels}
+            activeView={activeView}
+            onToggleTutorial={() =>
+              setActiveView((prev) => (prev === 'tutorial' ? 'studio' : 'tutorial'))
+            }
           />
+
+          {activeView === 'tutorial' ? (
+            <TutorialPage
+              instrument={instrument}
+              chordPlaybackStyle={chordPlaybackStyle}
+              onChordPlaybackStyleChange={handleChordPlaybackStyleChange}
+              onBackToStudio={() => setActiveView('studio')}
+              onOpenStudioPanel={handleOpenStudioPanel}
+              onOpenFavorites={() => setIsFavoritesOpen(true)}
+              onOpenSettings={() => setIsSettingsOpen(true)}
+            />
+          ) : (
+            <>
 
           {/* Timeline Sequencer */}
           <ChordTimeline
@@ -564,6 +774,7 @@ export default function App() {
             onClearTimeline={handleClearTimeline}
             onOpenSaveModal={() => setIsSaveModalOpen(true)}
             onOpenExportMidi={() => setIsMidiModalOpen(true)}
+            onOpenExportPdf={() => setIsPdfModalOpen(true)}
             onOpenPickerModal={() => setIsPickerOpen(true)}
             tempoBpm={tempoBpm}
             onTempoChange={setTempoBpm}
@@ -571,11 +782,18 @@ export default function App() {
             onInstrumentChange={setInstrument}
             onUpdateChordOctave={handleUpdateChordOctave}
             onUpdateChordRhythm={handleUpdateChordRhythm}
+            onUpdateChordDuration={handleUpdateChordDuration}
             activeBackingStyle={backingStyle}
             onBackingStyleChange={setBackingStyle}
             onTransposeProgression={handleTransposeProgression}
             totalTransposition={totalTransposition}
-            onGenerateRandomProgression={handleGenerateRandomProgression}
+            onGenerateRandomProgression={() => handleGenerateRandomProgression(false)}
+            generatedProgressionInfo={generatedProgInfo}
+            onDismissGeneratedInfo={() => setGeneratedProgInfo(null)}
+            chordTimbre={chordTimbre}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            isExpanded={panelsExpanded.timeline}
+            onToggleExpanded={() => togglePanel('timeline')}
           />
 
           {/* Smart Next Chord Suggestions Grid (Placed directly after the Timeline) */}
@@ -588,7 +806,9 @@ export default function App() {
             onPreviewOnly={handlePreviewOnly}
             onOpenFullPicker={() => setIsPickerOpen(true)}
             currentOctaveOffset={inspectedOctaveOffset}
-            onGenerateRandomProgression={handleGenerateRandomProgression}
+            onGenerateRandomProgression={() => handleGenerateRandomProgression(true)}
+            isExpanded={panelsExpanded.suggestions}
+            onToggleExpanded={() => togglePanel('suggestions')}
           />
 
           {/* Melody Suggestions & Scale Visualizer (Fretboard & Keyboard) */}
@@ -601,13 +821,38 @@ export default function App() {
             loadedMelody={currentMelodyConfig}
             onMelodyChange={handleMelodyChange}
             onOpenExportMidi={() => setIsMidiModalOpen(true)}
+            isExpanded={panelsExpanded.melody}
+            onToggleExpanded={() => togglePanel('melody')}
           />
 
           {/* Dicionário de Escalas & Modos (Seletor de Tom e Modo, Estrutura Intervalar e Digitações) */}
           <ScaleDictionaryPanel
             initialRoot={timeline[0]?.chord?.root || 'C'}
-            initialScaleId="lydian"
+            initialScaleId="ionian"
             defaultInstrument={instrument}
+            selectedRoot={selectedScaleRoot}
+            selectedScaleId={selectedScaleId}
+            onRootChange={setSelectedScaleRoot}
+            onScaleIdChange={setSelectedScaleId}
+            isExpanded={panelsExpanded.scales}
+            onToggleExpanded={() => togglePanel('scales')}
+          />
+
+          {/* Guia de Improviso (Análise da Progressão, Padrões Rítmicos e Frases Curtas por Acorde) */}
+          <ImprovisationGuidePanel
+            timeline={timeline}
+            selectedGenre={selectedGenre}
+            tempoBpm={tempoBpm}
+            instrument={instrument}
+            inspectedChord={inspectedChord}
+            selectedTimelineIndex={selectedIndex}
+            selectedScaleRoot={selectedScaleRoot}
+            selectedScaleId={selectedScaleId}
+            onScaleRootChange={setSelectedScaleRoot}
+            onScaleIdChange={setSelectedScaleId}
+            onSelectTimelineIndex={handleSelectTimelineIndex}
+            isExpanded={panelsExpanded.improvisation}
+            onToggleExpanded={() => togglePanel('improvisation')}
           />
 
           {/* Active Chord Inspector (Diagrams for Violão / Teclado + Escala Correspondente + Octave Controls + Inversions) */}
@@ -622,7 +867,16 @@ export default function App() {
             isInTimeline={timeline.some((t) => t.chord.id === inspectedChord.id)}
             octaveOffset={inspectedOctaveOffset}
             onOctaveChange={handleOctaveChange}
+            onUpdateChordDuration={
+              selectedIndex !== null && timeline[selectedIndex]
+                ? (newDur) => handleUpdateChordDuration(selectedIndex, newDur)
+                : undefined
+            }
+            isExpanded={panelsExpanded.inspector}
+            onToggleExpanded={() => togglePanel('inspector')}
           />
+            </>
+          )}
         </div>
 
         {/* Android Navigation Bar (when in mobile frame) */}
@@ -668,10 +922,43 @@ export default function App() {
         timeline={timeline}
         tempoBpm={tempoBpm}
         instrument={instrument}
-        songTitle={defaultSaveName}
+        songTitle={songTitle.trim() || defaultSaveName}
         melodyNotes={currentMelodyConfig?.notes || null}
         melodyStyleName={currentMelodyConfig?.style}
         initialBackingStyle={backingStyle}
+      />
+
+      <ExportPdfModal
+        isOpen={isPdfModalOpen}
+        onClose={() => setIsPdfModalOpen(false)}
+        timeline={timeline}
+        tempoBpm={tempoBpm}
+        instrument={instrument}
+        defaultDisplayMode={displayMode}
+        genreLabel={getGenreLabel(selectedGenre)}
+        songTitle={songTitle}
+        onSongTitleChange={setSongTitle}
+        artistOrSubtitle={songArtist}
+        onArtistOrSubtitleChange={setSongArtist}
+        lyrics={songLyrics}
+        onLyricsChange={setSongLyrics}
+        fallbackTitle={defaultSaveName}
+      />
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        chordTimbre={chordTimbre}
+        onChordTimbreChange={handleChordTimbreChange}
+        chordPlaybackStyle={chordPlaybackStyle}
+        onChordPlaybackStyleChange={handleChordPlaybackStyleChange}
+        instrument={instrument}
+        onInstrumentChange={setInstrument}
+        previewChord={inspectedChord}
+        isDarkMode={isDarkMode}
+        onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+        isMobileFrameMode={isMobileFrameMode}
+        onToggleMobileFrameMode={() => setIsMobileFrameMode(!isMobileFrameMode)}
       />
 
       <OfflineIndicator />

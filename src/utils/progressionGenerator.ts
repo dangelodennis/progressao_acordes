@@ -2,6 +2,7 @@ import { ChordDefinition, Genre, InstrumentType, TimelineChordItem, ChordRhythmP
 import { CHORD_DATABASE, getGenreLabel } from '../data/musicTheory';
 
 export interface GeneratedProgression {
+  id: string;
   title: string;
   description: string;
   genre: Genre;
@@ -403,6 +404,9 @@ const GENRE_PROGRESSION_TEMPLATES: Record<Genre, ProgressionTemplate[]> = {
   ],
 };
 
+// Track last generated cadence per genre to prevent back-to-back repeats
+const lastGeneratedCadenceByGenre: Partial<Record<Genre, string>> = {};
+
 /**
  * Procedurally generates a random chord progression specifically tailored
  * to the given genre, with musical variety, proper voicing, tempo, and rhythm.
@@ -413,25 +417,40 @@ export function generateRandomProgressionForGenre(
 ): GeneratedProgression {
   const templates = GENRE_PROGRESSION_TEMPLATES[genre] || GENRE_PROGRESSION_TEMPLATES.pop;
 
-  // If there are existing chords, avoid generating the exact same first chord if possible
-  const currentFirstSymbol = currentChordsInTimeline?.[0]?.symbol;
+  // Exclude the exact current progression cadence (and last generated cadence) so clicks feel fresh
+  const currentCadenceKey =
+    currentChordsInTimeline && currentChordsInTimeline.length > 0
+      ? currentChordsInTimeline.map((c) => c.symbol).join('-')
+      : '';
+  const lastGeneratedKey = lastGeneratedCadenceByGenre[genre] || '';
+
   let pool = templates;
-  if (currentFirstSymbol && templates.length > 1) {
-    const diversePool = templates.filter((t) => t.chordSymbols[0] !== currentFirstSymbol);
-    if (diversePool.length > 0) {
-      pool = diversePool;
+  if (templates.length > 1) {
+    const nonMatchingCurrent = templates.filter((t) => {
+      const key = t.chordSymbols.join('-');
+      return key !== currentCadenceKey && key !== lastGeneratedKey;
+    });
+    if (nonMatchingCurrent.length > 0) {
+      pool = nonMatchingCurrent;
+    } else {
+      const fallbackPool = templates.filter((t) => t.chordSymbols.join('-') !== currentCadenceKey);
+      if (fallbackPool.length > 0) {
+        pool = fallbackPool;
+      }
     }
   }
 
   // Select a random template from the pool
   const randomIndex = Math.floor(Math.random() * pool.length);
   const selectedTemplate = pool[randomIndex];
+  lastGeneratedCadenceByGenre[genre] = selectedTemplate.chordSymbols.join('-');
 
   // Resolve chord definitions safely from CHORD_DATABASE
+  const uniqueBatchToken = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   const timelineItems: TimelineChordItem[] = selectedTemplate.chordSymbols.map((sym, idx) => {
     const chordDef = CHORD_DATABASE[sym] || CHORD_DATABASE['C'];
     return {
-      id: `gen-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`,
+      id: `gen-${uniqueBatchToken}-${idx}`,
       chord: chordDef,
       durationBeats: 4,
       genreContext: genre,
@@ -441,6 +460,7 @@ export function generateRandomProgressionForGenre(
   });
 
   return {
+    id: `prog-${uniqueBatchToken}`,
     title: `${selectedTemplate.name} (${getGenreLabel(genre)})`,
     description: selectedTemplate.description,
     genre,

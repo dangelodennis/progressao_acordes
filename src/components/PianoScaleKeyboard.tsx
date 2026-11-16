@@ -83,7 +83,7 @@ export const PianoScaleKeyboard: React.FC<PianoScaleKeyboardProps> = ({
   };
 
   return (
-    <div className="w-full flex flex-col space-y-2">
+    <div id="piano-scale-keyboard" className="w-full flex flex-col space-y-2">
       {/* Header controls */}
       <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
         <div className="flex items-center gap-2">
@@ -246,7 +246,7 @@ export const PianoScaleKeyboard: React.FC<PianoScaleKeyboardProps> = ({
             <span>Notas do Acorde ({activeChord?.symbol || 'Harmonia'})</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="inline-block w-2.5 h-2.5 rounded-none bg-[#cbd5e1] border border-[#2a3040]"></span>
+            <span className="inline-block w-2.5 h-2.5 rounded-none bg-[#cbd5e1] border border-slate-400"></span>
             <span>Notas da Escala</span>
           </span>
           <span className="flex items-center gap-1.5">

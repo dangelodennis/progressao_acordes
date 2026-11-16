@@ -75,6 +75,8 @@ export interface ExportMidiOptions {
   includeMelody?: boolean;
   includeBackingTrack?: boolean;
   backingStyle?: BackingTrackStyle;
+  enableLooping?: boolean;
+  loopCount?: number;
 }
 
 /**
@@ -112,7 +114,12 @@ export function noteNameToMidiNumber(noteStr: string, octaveOffset: number = 0):
 /**
  * Builds a MIDI track byte array from an array of sorted absolute MIDI events
  */
-function createTrackChunk(trackName: string, events: MidiEvent[], ppq: number): number[] {
+function createTrackChunk(
+  trackName: string,
+  events: MidiEvent[],
+  _ppq: number,
+  targetEndTick?: number
+): number[] {
   const trackBytes: number[] = [];
 
   // Track name meta event at tick 0
@@ -149,8 +156,9 @@ function createTrackChunk(trackName: string, events: MidiEvent[], ppq: number): 
     }
   }
 
-  // End of Track Meta Event: 00 FF 2F 00
-  trackBytes.push(0x00, 0xff, 0x2f, 0x00);
+  // Pad End-of-Track delta cleanly to exact bar boundary if requested
+  const endDelta = targetEndTick !== undefined ? Math.max(0, targetEndTick - lastTick) : 0;
+  trackBytes.push(...writeVarLen(endDelta), 0xff, 0x2f, 0x00);
 
   // Return MTrk chunk: "MTrk" + 4-byte length + track data
   return [
@@ -158,6 +166,38 @@ function createTrackChunk(trackName: string, events: MidiEvent[], ppq: number): 
     ...writeUint32(trackBytes.length),
     ...trackBytes,
   ];
+}
+
+/**
+ * Repeats one cycle of events across `loopCount` iterations cleanly clamped within each cycle boundary
+ */
+function repeatCycleEvents(
+  cycleEvents: MidiEvent[],
+  cycleTicks: number,
+  loopCount: number
+): MidiEvent[] {
+  if (loopCount <= 1) {
+    return cycleEvents.map((ev) => ({
+      ...ev,
+      tick: ev.type === 'noteOff' ? Math.min(ev.tick, Math.max(1, cycleTicks - 8)) : ev.tick,
+    }));
+  }
+
+  const repeated: MidiEvent[] = [];
+  for (let loopIdx = 0; loopIdx < loopCount; loopIdx++) {
+    const tickOffset = loopIdx * cycleTicks;
+    for (const ev of cycleEvents) {
+      const clampedTick =
+        ev.type === 'noteOff'
+          ? Math.min(ev.tick, Math.max(1, cycleTicks - 8))
+          : Math.min(ev.tick, Math.max(0, cycleTicks - 12));
+      repeated.push({
+        ...ev,
+        tick: tickOffset + clampedTick,
+      });
+    }
+  }
+  return repeated;
 }
 
 /**
@@ -173,12 +213,19 @@ export function generateMidiFile(options: ExportMidiOptions): Uint8Array {
     includeMelody = true,
     includeBackingTrack = false,
     backingStyle = 'none',
+    enableLooping = false,
+    loopCount = 4,
   } = options;
 
   const ppq = 480; // Pulses Per Quarter Note (ticks per beat)
   const tracks: number[][] = [];
 
-  // 1. Conductor Track (Tempo, Time Signature, Track Name)
+  const totalCycleBeats = timeline.reduce((sum, item) => sum + (item.durationBeats || 4), 0);
+  const cycleTicks = Math.max(ppq, Math.round(totalCycleBeats * ppq));
+  const effectiveLoopCount = enableLooping ? Math.max(1, Math.min(16, loopCount)) : 1;
+  const totalPhraseTicks = cycleTicks * effectiveLoopCount;
+
+  // 1. Conductor Track (Tempo, Time Signature, Track Name, Optional Loop Cue Markers)
   const conductorBytes: number[] = [];
   // Track Name
   const conductorName = stringToBytes(songTitle);
@@ -199,8 +246,21 @@ export function generateMidiFile(options: ExportMidiOptions): Uint8Array {
   conductorBytes.push(...writeVarLen(0));
   conductorBytes.push(0xff, 0x51, 0x03, ...tempoBytes);
 
-  // End of Conductor Track
-  conductorBytes.push(0x00, 0xff, 0x2f, 0x00);
+  if (enableLooping && timeline.length > 0) {
+    // Cue Point: Loop Start at tick 0
+    const startCue = stringToBytes('LOOP_START');
+    conductorBytes.push(...writeVarLen(0));
+    conductorBytes.push(0xff, 0x06, ...writeVarLen(startCue.length), ...startCue);
+
+    // Cue Point: Loop End at exact phrase bar boundary
+    const endCue = stringToBytes('LOOP_END');
+    conductorBytes.push(...writeVarLen(totalPhraseTicks));
+    conductorBytes.push(0xff, 0x06, ...writeVarLen(endCue.length), ...endCue);
+    conductorBytes.push(0x00, 0xff, 0x2f, 0x00);
+  } else {
+    // End of Conductor Track
+    conductorBytes.push(0x00, 0xff, 0x2f, 0x00);
+  }
 
   tracks.push([
     ...stringToBytes('MTrk'),
@@ -259,22 +319,34 @@ export function generateMidiFile(options: ExportMidiOptions): Uint8Array {
           }
         }
       } else if (pattern === 'syncopated') {
-        // Syncopated Groove: Beat 0 (dur 1.3), Beat 1.5 (dur 1.3), Beat 3.0 (dur 0.9)
-        const strikes = [
-          { beat: 0, dur: 1.3 },
-          { beat: 1.5, dur: 1.3 },
-          { beat: 3.0, dur: 0.9 },
-        ];
+        const strikes: { beat: number; dur: number }[] = [];
+        if (durationBeats <= 2) {
+          strikes.push({ beat: 0, dur: Math.min(1.0, durationBeats) });
+          if (durationBeats > 1) {
+            strikes.push({ beat: 1.0, dur: 0.9 });
+          }
+        } else if (durationBeats === 3) {
+          strikes.push({ beat: 0, dur: 1.3 });
+          strikes.push({ beat: 1.5, dur: 1.3 });
+        } else {
+          for (let m = 0; m < durationBeats; m += 4) {
+            if (m < durationBeats) strikes.push({ beat: m, dur: 1.3 });
+            if (m + 1.5 < durationBeats) strikes.push({ beat: m + 1.5, dur: 1.3 });
+            if (m + 3.0 < durationBeats) strikes.push({ beat: m + 3.0, dur: 0.9 });
+          }
+        }
         strikes.forEach(({ beat, dur }) => {
+          const clampedDur = Math.min(dur, durationBeats - beat - 0.05);
+          if (clampedDur <= 0.1) return;
           const strikeTick = Math.round((currentBeat + beat) * ppq);
-          const strikeEnd = Math.round((currentBeat + beat + dur) * ppq);
+          const strikeEnd = Math.round((currentBeat + beat + clampedDur) * ppq);
           for (const midiNum of noteMidiNumbers) {
             chordEvents.push({ tick: strikeTick, type: 'noteOn', channel: 0, note: midiNum, velocity: 86 });
             chordEvents.push({ tick: strikeEnd, type: 'noteOff', channel: 0, note: midiNum, velocity: 0 });
           }
         });
       } else if (pattern === 'arpeggio') {
-        // 8 notes arpeggiated across measure
+        // Arpeggiated 8th notes across durationBeats
         const totalSteps = durationBeats * 2;
         for (let s = 0; s < totalSteps; s++) {
           const noteIdx = s % noteMidiNumbers.length;
@@ -285,22 +357,24 @@ export function generateMidiFile(options: ExportMidiOptions): Uint8Array {
           chordEvents.push({ tick: strikeEnd, type: 'noteOff', channel: 0, note: midiNum, velocity: 0 });
         }
       } else if (pattern === 'waltz') {
-        // Beat 1: Bass note
         const bassMidi = noteMidiNumbers[0];
-        const t1 = Math.round(currentBeat * ppq);
-        const t1End = Math.round((currentBeat + 0.9) * ppq);
-        chordEvents.push({ tick: t1, type: 'noteOn', channel: 0, note: bassMidi, velocity: 90 });
-        chordEvents.push({ tick: t1End, type: 'noteOff', channel: 0, note: bassMidi, velocity: 0 });
-
-        // Beat 2 & 3: Strum
-        [1, 2].forEach((b) => {
-          const tBeat = Math.round((currentBeat + b) * ppq);
-          const tBeatEnd = Math.round((currentBeat + b + 0.85) * ppq);
-          for (const midiNum of noteMidiNumbers) {
-            chordEvents.push({ tick: tBeat, type: 'noteOn', channel: 0, note: midiNum, velocity: 80 });
-            chordEvents.push({ tick: tBeatEnd, type: 'noteOff', channel: 0, note: midiNum, velocity: 0 });
+        for (let m = 0; m < durationBeats; m += 3) {
+          if (m < durationBeats) {
+            const t1 = Math.round((currentBeat + m) * ppq);
+            const t1End = Math.round((currentBeat + m + Math.min(0.9, durationBeats - m - 0.05)) * ppq);
+            chordEvents.push({ tick: t1, type: 'noteOn', channel: 0, note: bassMidi, velocity: 90 });
+            chordEvents.push({ tick: t1End, type: 'noteOff', channel: 0, note: bassMidi, velocity: 0 });
           }
-        });
+          [1, 2].forEach((b) => {
+            if (m + b >= durationBeats) return;
+            const tBeat = Math.round((currentBeat + m + b) * ppq);
+            const tBeatEnd = Math.round((currentBeat + m + b + Math.min(0.85, durationBeats - (m + b) - 0.05)) * ppq);
+            for (const midiNum of noteMidiNumbers) {
+              chordEvents.push({ tick: tBeat, type: 'noteOn', channel: 0, note: midiNum, velocity: 80 });
+              chordEvents.push({ tick: tBeatEnd, type: 'noteOff', channel: 0, note: midiNum, velocity: 0 });
+            }
+          });
+        }
       } else {
         // Whole note (default): 1 sustained chord
         const durationTicks = Math.round((durationBeats - 0.05) * ppq);
@@ -314,7 +388,15 @@ export function generateMidiFile(options: ExportMidiOptions): Uint8Array {
       currentBeat += durationBeats;
     }
 
-    const chordTrackChunk = createTrackChunk('Harmonia (Acordes)', chordEvents, ppq);
+    const finalChordEvents = enableLooping
+      ? repeatCycleEvents(chordEvents, cycleTicks, effectiveLoopCount)
+      : chordEvents;
+    const chordTrackChunk = createTrackChunk(
+      'Harmonia (Acordes)',
+      finalChordEvents,
+      ppq,
+      enableLooping ? totalPhraseTicks : undefined
+    );
     tracks.push(chordTrackChunk);
   }
 
@@ -359,7 +441,15 @@ export function generateMidiFile(options: ExportMidiOptions): Uint8Array {
       });
     }
 
-    const melodyTrackChunk = createTrackChunk('Linha Melódica (Lead)', melodyEvents, ppq);
+    const finalMelodyEvents = enableLooping
+      ? repeatCycleEvents(melodyEvents, cycleTicks, effectiveLoopCount)
+      : melodyEvents;
+    const melodyTrackChunk = createTrackChunk(
+      'Linha Melódica (Lead)',
+      finalMelodyEvents,
+      ppq,
+      enableLooping ? totalPhraseTicks : undefined
+    );
     tracks.push(melodyTrackChunk);
   }
 
@@ -384,16 +474,19 @@ export function generateMidiFile(options: ExportMidiOptions): Uint8Array {
       const thirdMidi = rootMidi + (isMinor ? 3 : 4);
       const octaveMidi = rootMidi + 12;
 
-      // Helper to push bass note
+      // Helper to push bass note (clamped within chord durationBeats)
       const addBass = (beatOffset: number, durBeats: number, midi: number, vel = 90) => {
+        if (beatOffset >= durationBeats) return;
+        const clampedDur = Math.min(durBeats, durationBeats - beatOffset);
         const start = Math.round((currentBeat + beatOffset) * ppq);
-        const end = Math.round((currentBeat + beatOffset + durBeats * 0.9) * ppq);
+        const end = Math.round((currentBeat + beatOffset + clampedDur * 0.9) * ppq);
         bassEvents.push({ tick: start, type: 'noteOn', channel: 2, note: midi, velocity: vel });
         bassEvents.push({ tick: end, type: 'noteOff', channel: 2, note: midi, velocity: 0 });
       };
 
-      // Helper to push drum hit (Channel 9 = General MIDI standard drum channel)
+      // Helper to push drum hit (Channel 9 = General MIDI standard drum channel, clamped within chord durationBeats)
       const addDrum = (beatOffset: number, note: number, vel = 95) => {
+        if (beatOffset >= durationBeats) return;
         const start = Math.round((currentBeat + beatOffset) * ppq);
         const end = start + Math.round(ppq * 0.25);
         drumEvents.push({ tick: start, type: 'noteOn', channel: 9, note, velocity: vel });
@@ -409,70 +502,81 @@ export function generateMidiFile(options: ExportMidiOptions): Uint8Array {
 
       switch (backingStyle) {
         case 'rock': {
-          addDrum(0, KICK, 105);
-          addDrum(1, SNARE, 100);
-          addDrum(2, KICK, 100);
-          addDrum(2.5, KICK, 85);
-          addDrum(3, SNARE, 100);
-          for (let b = 0; b < durationBeats * 2; b++) {
+          for (let bar = 0; bar < durationBeats; bar += 4) {
+            addDrum(bar + 0, KICK, 105);
+            addDrum(bar + 1, SNARE, 100);
+            addDrum(bar + 2, KICK, 100);
+            addDrum(bar + 2.5, KICK, 85);
+            addDrum(bar + 3, SNARE, 100);
+          }
+          const total8ths = Math.floor(durationBeats * 2);
+          for (let b = 0; b < total8ths; b++) {
             addDrum(b * 0.5, CLOSED_HAT, b % 2 === 0 ? 80 : 65);
+            if (b === total8ths - 1 && total8ths >= 4) {
+              addBass(b * 0.5, 0.45, fifthMidi, 95);
+            } else {
+              addBass(b * 0.5, 0.45, rootMidi, 90);
+            }
           }
-          for (let b = 0; b < 7; b++) {
-            addBass(b * 0.5, 0.45, rootMidi, 90);
-          }
-          addBass(3.5, 0.45, fifthMidi, 95);
           break;
         }
         case 'funk': {
-          addDrum(0, KICK, 110);
-          addDrum(1, SNARE, 100);
-          addDrum(1.75, KICK, 90);
-          addDrum(2.5, KICK, 100);
-          addDrum(2.75, SNARE, 50); // ghost
-          addDrum(3, SNARE, 105);
+          for (let bar = 0; bar < durationBeats; bar += 4) {
+            addDrum(bar + 0, KICK, 110);
+            addDrum(bar + 1, SNARE, 100);
+            addDrum(bar + 1.75, KICK, 90);
+            addDrum(bar + 2.5, KICK, 100);
+            addDrum(bar + 2.75, SNARE, 50); // ghost
+            addDrum(bar + 3, SNARE, 105);
+            addBass(bar + 0, 0.4, rootMidi, 100);
+            addBass(bar + 0.75, 0.25, octaveMidi, 85);
+            addBass(bar + 1.5, 0.5, rootMidi, 95);
+            addBass(bar + 2.5, 0.4, fifthMidi, 95);
+            addBass(bar + 3.25, 0.3, rootMidi, 85);
+          }
           for (let s = 0; s < durationBeats * 4; s++) {
             const beatPos = s * 0.25;
-            const isOpen = beatPos === 1.5 || beatPos === 3.5;
+            const posInBar = beatPos % 4;
+            const isOpen = posInBar === 1.5 || posInBar === 3.5;
             addDrum(beatPos, isOpen ? OPEN_HAT : CLOSED_HAT, isOpen ? 90 : 65);
           }
-          addBass(0, 0.4, rootMidi, 100);
-          addBass(0.75, 0.25, octaveMidi, 85);
-          addBass(1.5, 0.5, rootMidi, 95);
-          addBass(2.5, 0.4, fifthMidi, 95);
-          addBass(3.25, 0.3, rootMidi, 85);
           break;
         }
         case 'reggae': {
-          addDrum(2, KICK, 110);
-          addDrum(2, RIMSHOT, 100);
+          for (let bar = 0; bar < durationBeats; bar += 4) {
+            addDrum(bar + 2, KICK, 110);
+            addDrum(bar + 2, RIMSHOT, 100);
+            addBass(bar + 0, 0.8, rootMidi, 100);
+            addBass(bar + 1.0, 0.7, rootMidi, 90);
+            addBass(bar + 3.0, 0.8, fifthMidi, 95);
+          }
           for (let b = 0; b < durationBeats; b++) {
             addDrum(b + 0.5, CLOSED_HAT, 85);
           }
-          addBass(0, 0.8, rootMidi, 100);
-          addBass(1.0, 0.7, rootMidi, 90);
-          addBass(3.0, 0.8, fifthMidi, 95);
           break;
         }
         case 'shuffle': {
-          addDrum(0, KICK, 100);
-          addDrum(1, SNARE, 100);
-          addDrum(2, KICK, 100);
-          addDrum(3, SNARE, 100);
+          const sixthMidi = rootMidi + 9;
+          for (let bar = 0; bar < durationBeats; bar += 4) {
+            addDrum(bar + 0, KICK, 100);
+            addDrum(bar + 1, SNARE, 100);
+            addDrum(bar + 2, KICK, 100);
+            addDrum(bar + 3, SNARE, 100);
+            addBass(bar + 0, 0.9, rootMidi, 95);
+            addBass(bar + 1, 0.9, thirdMidi, 90);
+            addBass(bar + 2, 0.9, fifthMidi, 90);
+            addBass(bar + 3, 0.9, sixthMidi, 90);
+          }
           for (let b = 0; b < durationBeats; b++) {
             addDrum(b, CLOSED_HAT, 80);
             addDrum(b + 0.667, CLOSED_HAT, 65);
           }
-          const sixthMidi = rootMidi + 9;
-          addBass(0, 0.9, rootMidi, 95);
-          addBass(1, 0.9, thirdMidi, 90);
-          addBass(2, 0.9, fifthMidi, 90);
-          addBass(3, 0.9, sixthMidi, 90);
           break;
         }
         case 'disco': {
           for (let b = 0; b < durationBeats; b++) {
             addDrum(b, KICK, 110);
-            if (b === 1 || b === 3) addDrum(b, SNARE, 95);
+            if (b % 4 === 1 || b % 4 === 3) addDrum(b, SNARE, 95);
             addDrum(b, CLOSED_HAT, 60);
             addDrum(b + 0.5, OPEN_HAT, 90);
             addBass(b, 0.45, rootMidi, 95);
@@ -481,27 +585,31 @@ export function generateMidiFile(options: ExportMidiOptions): Uint8Array {
           break;
         }
         case 'bossa': {
-          addDrum(0, KICK, 80);
-          addDrum(2, KICK, 75);
-          addDrum(0, RIMSHOT, 90);
-          addDrum(1.5, RIMSHOT, 85);
-          addDrum(2.5, RIMSHOT, 90);
-          addDrum(3.5, RIMSHOT, 85);
+          for (let bar = 0; bar < durationBeats; bar += 4) {
+            addDrum(bar + 0, KICK, 80);
+            addDrum(bar + 2, KICK, 75);
+            addDrum(bar + 0, RIMSHOT, 90);
+            addDrum(bar + 1.5, RIMSHOT, 85);
+            addDrum(bar + 2.5, RIMSHOT, 90);
+            addDrum(bar + 3.5, RIMSHOT, 85);
+            addBass(bar + 0, 1.2, rootMidi, 85);
+            addBass(bar + 1.5, 0.5, fifthMidi, 80);
+            addBass(bar + 2.0, 1.2, rootMidi, 85);
+            addBass(bar + 3.5, 0.5, fifthMidi, 80);
+          }
           for (let b = 0; b < durationBeats * 2; b++) {
             addDrum(b * 0.5, CLOSED_HAT, 55);
           }
-          addBass(0, 1.2, rootMidi, 85);
-          addBass(1.5, 0.5, fifthMidi, 80);
-          addBass(2.0, 1.2, rootMidi, 85);
-          addBass(3.5, 0.5, fifthMidi, 80);
           break;
         }
         case 'punk': {
           for (let b = 0; b < durationBeats; b++) {
             addDrum(b, KICK, 105);
-            if (b === 1 || b === 3) addDrum(b, SNARE, 110);
+            if (b % 4 === 1 || b % 4 === 3) addDrum(b, SNARE, 110);
           }
-          addDrum(2.5, KICK, 95);
+          for (let bar = 0; bar < durationBeats; bar += 4) {
+            addDrum(bar + 2.5, KICK, 95);
+          }
           for (let b = 0; b < durationBeats * 2; b++) {
             addDrum(b * 0.5, OPEN_HAT, 85);
             addBass(b * 0.5, 0.48, rootMidi, 100);
@@ -530,10 +638,30 @@ export function generateMidiFile(options: ExportMidiOptions): Uint8Array {
     }
 
     if (bassEvents.length > 0) {
-      tracks.push(createTrackChunk('Contrabaixo (Bass)', bassEvents, ppq));
+      const finalBassEvents = enableLooping
+        ? repeatCycleEvents(bassEvents, cycleTicks, effectiveLoopCount)
+        : bassEvents;
+      tracks.push(
+        createTrackChunk(
+          'Contrabaixo (Bass)',
+          finalBassEvents,
+          ppq,
+          enableLooping ? totalPhraseTicks : undefined
+        )
+      );
     }
     if (drumEvents.length > 0) {
-      tracks.push(createTrackChunk('Bateria (Drums GM)', drumEvents, ppq));
+      const finalDrumEvents = enableLooping
+        ? repeatCycleEvents(drumEvents, cycleTicks, effectiveLoopCount)
+        : drumEvents;
+      tracks.push(
+        createTrackChunk(
+          'Bateria (Drums GM)',
+          finalDrumEvents,
+          ppq,
+          enableLooping ? totalPhraseTicks : undefined
+        )
+      );
     }
   }
 

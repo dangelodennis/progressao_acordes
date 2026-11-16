@@ -1,5 +1,5 @@
 // Service Worker for Progressão de Acordes PWA
-const CACHE_NAME = 'acordes-cache-v1';
+const CACHE_NAME = 'acordes-cache-v2';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -14,6 +14,18 @@ const PRECACHE_ASSETS = [
   '/screenshot-desktop.png'
 ];
 
+// Never cache Vite dev-server module graphs or pre-bundled dev deps
+function isDevServerAsset(url) {
+  return (
+    url.pathname.startsWith('/src/') ||
+    url.pathname.startsWith('/node_modules/') ||
+    url.pathname.startsWith('/@') ||
+    url.searchParams.has('v') ||
+    url.searchParams.has('t') ||
+    url.searchParams.has('import')
+  );
+}
+
 // 1. Install event: Precache static core assets and skip waiting
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -25,7 +37,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// 2. Activate event: Clean outdated caches and claim active clients
+// 2. Activate event: Clean outdated caches (including old acordes-cache-v1) and claim active clients
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -40,12 +52,18 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// 3. Fetch event: Intercept network requests for full offline resilience
+// 3. Fetch event: Intercept network requests for offline resilience (production assets only)
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests
+  // Only handle same-origin GET requests
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+
+  // Bypass service worker cache completely for Vite dev modules/deps
+  if (isDevServerAsset(url)) {
+    return;
+  }
 
   // For HTML navigation requests: Network First with Cache Fallback
   if (event.request.mode === 'navigate' || event.request.destination === 'document') {
@@ -67,11 +85,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For static assets (JS, CSS, images, fonts): Cache First with Network Fallback & Update
+  // For built static assets (/assets/*, icons, manifest): Cache First with Network Fallback
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Fetch in background to update cache for next time (stale-while-revalidate)
         fetch(event.request)
           .then((networkResponse) => {
             if (networkResponse && networkResponse.status === 200) {
@@ -84,7 +101,6 @@ self.addEventListener('fetch', (event) => {
         return cachedResponse;
       }
 
-      // Not in cache: fetch from network and store in cache
       return fetch(event.request)
         .then((networkResponse) => {
           if (!networkResponse || networkResponse.status !== 200 || networkResponse.type === 'opaque') {
@@ -97,7 +113,6 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         })
         .catch(() => {
-          // If offline and request is an image, could return fallback or nothing
           return new Response('Offline resource unavailable', { status: 503, statusText: 'Offline' });
         });
     })

@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { TimelineChordItem, ChordDefinition, InstrumentType, ChordRhythmPattern, BackingTrackStyle, CHORD_DURATION_OPTIONS } from '../types';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { TimelineChordItem, ChordDefinition, InstrumentType, ChordRhythmPattern, BackingTrackStyle, CHORD_DURATION_OPTIONS, ChordTimbre, CHORD_TIMBRE_OPTIONS } from '../types';
 import { audioEngine } from '../utils/audioPlayer';
 import { getSemitone } from '../utils/melodyGenerator';
 import { PREFERRED_ROOT_NAMES, getTimelineKeyRoot } from '../utils/transposition';
+import { GeneratedProgression } from '../utils/progressionGenerator';
+import { analyzeTimelineHarmonicTension, TensionCategory } from '../utils/harmonicTension';
 import {
   Play,
   Pause,
@@ -27,6 +29,11 @@ import {
   ArrowUpDown,
   RotateCcw,
   Dices,
+  X,
+  AudioWaveform,
+  FileText,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 
 interface ChordTimelineProps {
@@ -38,6 +45,7 @@ interface ChordTimelineProps {
   onClearTimeline: () => void;
   onOpenSaveModal: () => void;
   onOpenExportMidi?: () => void;
+  onOpenExportPdf?: () => void;
   onOpenPickerModal: () => void;
   tempoBpm: number;
   onTempoChange: (bpm: number) => void;
@@ -51,6 +59,12 @@ interface ChordTimelineProps {
   onTransposeProgression?: (deltaSemitones: number) => void;
   totalTransposition?: number;
   onGenerateRandomProgression?: () => void;
+  generatedProgressionInfo?: GeneratedProgression | null;
+  onDismissGeneratedInfo?: () => void;
+  chordTimbre?: ChordTimbre;
+  onOpenSettings?: () => void;
+  isExpanded?: boolean;
+  onToggleExpanded?: () => void;
 }
 
 export const ChordTimeline: React.FC<ChordTimelineProps> = ({
@@ -62,6 +76,7 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
   onClearTimeline,
   onOpenSaveModal,
   onOpenExportMidi,
+  onOpenExportPdf,
   onOpenPickerModal,
   tempoBpm,
   onTempoChange,
@@ -75,10 +90,54 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
   onTransposeProgression,
   totalTransposition = 0,
   onGenerateRandomProgression,
+  generatedProgressionInfo,
+  onDismissGeneratedInfo,
+  chordTimbre = 'acoustic',
+  onOpenSettings,
+  isExpanded: controlledExpanded,
+  onToggleExpanded,
 }) => {
+  const [internalExpanded, setInternalExpanded] = useState(true);
+  const isExpanded = controlledExpanded ?? internalExpanded;
+  const handleToggleExpanded = () => {
+    if (onToggleExpanded) onToggleExpanded();
+    else setInternalExpanded((prev) => !prev);
+  };
   const [isPlaying, setIsPlaying] = useState(false);
   const [playingStep, setPlayingStep] = useState<number | null>(null);
   const [isLooping, setIsLooping] = useState(true);
+  const timelineScrollRef = useRef<HTMLDivElement | null>(null);
+  const playingStepRef = useRef<number | null>(null);
+  const onSelectIndexRef = useRef(onSelectIndex);
+  onSelectIndexRef.current = onSelectIndex;
+  const lastAppliedSignatureRef = useRef<string>('');
+
+  const tensionAnalyses = useMemo(
+    () => analyzeTimelineHarmonicTension(timeline),
+    [timeline]
+  );
+
+  useEffect(() => {
+    if (timeline.length === 0) {
+      audioEngine.stopSequence();
+      setIsPlaying(false);
+      setPlayingStep(null);
+      playingStepRef.current = null;
+      lastAppliedSignatureRef.current = '';
+    }
+  }, [timeline.length]);
+
+  useEffect(() => {
+    return () => {
+      audioEngine.stopSequence();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (generatedProgressionInfo && timelineScrollRef.current) {
+      timelineScrollRef.current.scrollLeft = 0;
+    }
+  }, [generatedProgressionInfo]);
 
   // Backing Track state
   const [localBackingStyle, setLocalBackingStyle] = useState<BackingTrackStyle>(() => {
@@ -154,38 +213,82 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
     { id: 'techno', label: 'Techno 4x4', icon: '🎛️', desc: 'Bumbo eletrônico 4x4 sub', bassDesc: 'Sub-bass rolante 16ths' },
   ];
 
+  const playbackSignature = useMemo(
+    () =>
+      timeline
+        .map(
+          (t) =>
+            `${t.id}:${t.chord.id}:${Number.isFinite(t.durationBeats) && t.durationBeats > 0 ? t.durationBeats : 4}:${t.octaveOffset ?? 0}:${t.rhythmPattern ?? 'whole'}`
+        )
+        .join('|') +
+      `|${tempoBpm}|${instrument}|${isLooping}|${backingStyle}`,
+    [timeline, tempoBpm, instrument, isLooping, backingStyle]
+  );
+
+  const startSequencePlayback = (startFromIndex = 0) => {
+    if (timeline.length === 0) return;
+    const effectiveVolume = isBackingMuted ? 0 : backingVolume;
+    const safeStart =
+      startFromIndex >= 0 && startFromIndex < timeline.length ? startFromIndex : 0;
+
+    lastAppliedSignatureRef.current = playbackSignature;
+    audioEngine.playSequence(
+      timeline,
+      tempoBpm,
+      instrument,
+      isLooping,
+      (stepIdx) => {
+        playingStepRef.current = stepIdx;
+        setPlayingStep(stepIdx);
+        onSelectIndexRef.current(stepIdx);
+      },
+      () => {
+        playingStepRef.current = null;
+        lastAppliedSignatureRef.current = '';
+        setIsPlaying(false);
+        setPlayingStep(null);
+      },
+      0,
+      backingStyle,
+      effectiveVolume,
+      safeStart
+    );
+  };
+
+  // Re-sync audio scheduler immediately if user changes BPM, chord durations, rhythms, or backing while playing
+  useEffect(() => {
+    if (!isPlaying) {
+      lastAppliedSignatureRef.current = '';
+      return;
+    }
+    if (timeline.length === 0) return;
+    if (lastAppliedSignatureRef.current === playbackSignature) return;
+
+    const resumeIndex =
+      playingStepRef.current !== null && playingStepRef.current < timeline.length
+        ? playingStepRef.current
+        : 0;
+    startSequencePlayback(resumeIndex);
+  }, [isPlaying, playbackSignature]);
+
   const handleTogglePlay = () => {
     if (isPlaying) {
       audioEngine.stopSequence();
+      playingStepRef.current = null;
+      lastAppliedSignatureRef.current = '';
       setIsPlaying(false);
       setPlayingStep(null);
     } else {
       if (timeline.length === 0) return;
       setIsPlaying(true);
-      const effectiveBacking = isBackingMuted ? 'none' : backingStyle;
-      const effectiveVolume = isBackingMuted ? 0 : backingVolume;
-      audioEngine.playSequence(
-        timeline,
-        tempoBpm,
-        instrument,
-        isLooping,
-        (stepIdx) => {
-          setPlayingStep(stepIdx);
-          onSelectIndex(stepIdx);
-        },
-        () => {
-          setIsPlaying(false);
-          setPlayingStep(null);
-        },
-        0,
-        effectiveBacking,
-        effectiveVolume
-      );
+      startSequencePlayback(0);
     }
   };
 
   const handleStop = () => {
     audioEngine.stopSequence();
+    playingStepRef.current = null;
+    lastAppliedSignatureRef.current = '';
     setIsPlaying(false);
     setPlayingStep(null);
   };
@@ -233,8 +336,15 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
     }
   };
 
-  const totalProgressionBeats = timeline.reduce((acc, it) => acc + (it.durationBeats || 4), 0);
-  const totalProgressionSeconds = Math.round((totalProgressionBeats * 60) / tempoBpm);
+  const totalProgressionBeats = timeline.reduce(
+    (acc, it) => acc + (Number.isFinite(it.durationBeats) && it.durationBeats > 0 ? it.durationBeats : 4),
+    0
+  );
+  const totalProgressionSecondsRaw = (totalProgressionBeats * 60) / tempoBpm;
+  const formattedTotalSeconds =
+    totalProgressionSecondsRaw < 10
+      ? totalProgressionSecondsRaw.toFixed(1)
+      : String(Math.round(totalProgressionSecondsRaw));
 
   return (
     <div
@@ -256,7 +366,7 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
               {timeline.length > 0 && (
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-none bg-amber-950/40 text-amber-300 border border-amber-800/50 flex items-center gap-1" title="Duração total da progressão">
                   <Clock className="w-2.5 h-2.5 text-amber-400" />
-                  <span>{totalProgressionBeats} tempos ({(totalProgressionBeats / 4).toFixed(1)} comp. • ~{totalProgressionSeconds}s)</span>
+                  <span>{totalProgressionBeats} tempos ({(totalProgressionBeats / 4).toFixed(1)} comp. • ~{formattedTotalSeconds}s)</span>
                 </span>
               )}
             </h2>
@@ -297,6 +407,22 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
               🎸 Violão
             </button>
           </div>
+
+          {/* Active Chord Timbre Shortcut (opens Settings Panel) */}
+          {onOpenSettings && (
+            <button
+              id="btn-timeline-timbre"
+              type="button"
+              onClick={onOpenSettings}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-none bg-[#181c26] hover:bg-[#202636] text-slate-300 border border-[#252a38] hover:border-amber-500/40 text-xs transition-colors active:translate-y-0.5"
+              title="Alterar timbre dos acordes nas Configurações"
+            >
+              <AudioWaveform className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-[11px] font-mono text-amber-300">
+                {CHORD_TIMBRE_OPTIONS.find((t) => t.id === chordTimbre)?.label || 'Acústico'}
+              </span>
+            </button>
+          )}
 
           {/* Tempo BPM */}
           <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-none bg-[#181c26] border border-[#252a38] text-xs">
@@ -410,9 +536,49 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
               <span className="font-medium">MIDI</span>
             </button>
           )}
+
+          {/* Export PDF File Button */}
+          {onOpenExportPdf && (
+            <button
+              id="btn-export-pdf"
+              type="button"
+              onClick={onOpenExportPdf}
+              disabled={timeline.length === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-none bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 font-normal text-xs border border-rose-700/50 transition-all disabled:opacity-50 active:translate-y-0.5"
+              title="Gerar arquivo PDF com a progressão, diagramas dos acordes e letra"
+            >
+              <FileText className="w-3.5 h-3.5 text-rose-400" />
+              <span className="font-medium">PDF</span>
+            </button>
+          )}
+
+          {/* Collapse / Expand Timeline Panel Button */}
+          <button
+            id="btn-toggle-timeline-panel"
+            type="button"
+            onClick={handleToggleExpanded}
+            className="p-1.5 rounded-none bg-[#181c26] hover:bg-[#202534] text-slate-400 hover:text-slate-200 border border-[#252a38] transition-colors"
+            title={isExpanded ? 'Recolher Linha do Tempo' : 'Expandir Linha do Tempo'}
+            aria-expanded={isExpanded}
+          >
+            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
         </div>
       </div>
 
+      {!isExpanded && timeline.length > 0 && (
+        <div className="px-2.5 py-1.5 bg-[#10141d] border border-[#1e2434] flex items-center justify-between gap-2 text-xs text-slate-300 overflow-x-auto">
+          <span className="font-mono text-indigo-300 truncate">
+            {timeline.map((t) => t.chord.symbol).join(' → ')}
+          </span>
+          <span className="text-[10px] font-mono text-slate-400 shrink-0">
+            {tempoBpm} BPM • {totalProgressionBeats} tempos
+          </span>
+        </div>
+      )}
+
+      {isExpanded && (
+      <>
       {/* Backing Track Accompaniment Toolbar Strip */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 px-3 py-2 bg-[#10141d] border border-[#1e2434] text-xs">
         <div className="flex items-center gap-2 flex-wrap">
@@ -467,7 +633,7 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
               className={`p-1 rounded-none border text-xs transition-colors ${
                 isBackingMuted
                   ? 'bg-rose-950/40 text-rose-400 border-rose-800/50'
-                  : 'bg-[#181d2a] text-slate-300 border-[#252c3e] hover:text-white'
+                  : 'bg-[#181d2a] text-slate-300 border-[#252c3e] hover:text-slate-100'
               }`}
               title={isBackingMuted ? 'Desmutar Bateria/Baixo' : 'Mutar Bateria/Baixo'}
             >
@@ -523,7 +689,7 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
               id="btn-transpose-down"
               onClick={() => onTransposeProgression && onTransposeProgression(-1)}
               disabled={timeline.length === 0}
-              className="px-2.5 py-1 text-slate-300 hover:text-white hover:bg-[#202738] active:bg-[#283146] font-mono text-xs border-r border-[#262c3e] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-2.5 py-1 text-slate-300 hover:text-slate-100 hover:bg-[#202738] active:bg-[#283146] font-mono text-xs border-r border-[#262c3e] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               title="Transpor meio tom abaixo (-1 semitom)"
             >
               -1 st
@@ -533,7 +699,7 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
               id="btn-transpose-up"
               onClick={() => onTransposeProgression && onTransposeProgression(1)}
               disabled={timeline.length === 0}
-              className="px-2.5 py-1 text-slate-300 hover:text-white hover:bg-[#202738] active:bg-[#283146] font-mono text-xs disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-2.5 py-1 text-slate-300 hover:text-slate-100 hover:bg-[#202738] active:bg-[#283146] font-mono text-xs disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               title="Transpor meio tom acima (+1 semitom)"
             >
               +1 st
@@ -597,7 +763,7 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
                 onTransposeProgression(-totalTransposition);
               }
             }}
-            className="flex items-center gap-1 px-2.5 py-1 bg-[#171b26] hover:bg-[#202738] text-slate-300 hover:text-white border border-[#262c3e] text-[11px] transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1 bg-[#171b26] hover:bg-[#202738] text-slate-300 hover:text-slate-100 border border-[#262c3e] text-[11px] transition-colors"
             title="Restaurar a tonalidade original da progressão"
           >
             <RotateCcw className="w-3 h-3 text-amber-400" />
@@ -606,8 +772,53 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
         )}
       </div>
 
+      {/* Generated Progression Feedback Banner */}
+      {generatedProgressionInfo && timeline.length > 0 && (
+        <div
+          id="generated-progression-banner"
+          className="flex items-start justify-between gap-2.5 px-3 py-2 bg-amber-950/20 border border-amber-500/35 text-xs"
+        >
+          <div className="flex items-start gap-2 min-w-0">
+            <Dices className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div className="min-w-0 space-y-0.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 bg-amber-500/15 text-amber-300 border border-amber-500/30 font-medium">
+                  Gerada Aleatoriamente
+                </span>
+                <span className="font-medium text-slate-200">
+                  {generatedProgressionInfo.title}
+                </span>
+                <span className="font-mono text-[11px] text-amber-300">
+                  {generatedProgressionInfo.cadenceDescription}
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  • Tom: {generatedProgressionInfo.keyCenter} • {generatedProgressionInfo.tempoBpm} BPM
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 font-light">
+                {generatedProgressionInfo.description}
+              </p>
+            </div>
+          </div>
+          {onDismissGeneratedInfo && (
+            <button
+              type="button"
+              id="btn-dismiss-generated-banner"
+              onClick={onDismissGeneratedInfo}
+              className="p-1 text-slate-400 hover:text-slate-200 border border-transparent hover:border-[#2a3145] shrink-0 transition-colors"
+              title="Fechar aviso"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Chords Sequence Timeline Bar */}
-      <div className="relative min-h-[110px] p-2.5 rounded-none bg-[#10131a] border border-[#202534] overflow-x-auto">
+      <div
+        ref={timelineScrollRef}
+        className="relative min-h-[110px] p-2.5 rounded-none bg-[#10131a] border border-[#202534] overflow-x-auto"
+      >
         {timeline.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-6 text-center">
             <div className="w-8 h-8 rounded-none bg-[#181c26] border border-[#252a38] text-indigo-400/80 flex items-center justify-center mb-2">
@@ -649,10 +860,17 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
               const isSelected = selectedIndex === index;
               const isCurrentlyPlaying = isPlaying && playingStep === index;
               const octOffset = item.octaveOffset ?? 0;
-              const itemDuration = item.durationBeats || 4;
+              const itemDuration =
+                Number.isFinite(item.durationBeats) && item.durationBeats > 0 ? item.durationBeats : 4;
 
               // Precompute beat position and measure
-              const startBeat = timeline.slice(0, index).reduce((acc, it) => acc + (it.durationBeats || 4), 0);
+              const startBeat = timeline
+                .slice(0, index)
+                .reduce(
+                  (acc, it) =>
+                    acc + (Number.isFinite(it.durationBeats) && it.durationBeats > 0 ? it.durationBeats : 4),
+                  0
+                );
               const measureNum = Math.floor(startBeat / 4) + 1;
               const beatInMeasure = (startBeat % 4) + 1;
 
@@ -731,6 +949,83 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
                     )}
                   </div>
 
+                  {/* Harmonic Tension Visual Indicator */}
+                  {(() => {
+                    const tension = tensionAnalyses[index];
+                    if (!tension) return null;
+
+                    const styleByCategory: Record<
+                      TensionCategory,
+                      {
+                        container: string;
+                        text: string;
+                        barActive: string;
+                        dot: string;
+                      }
+                    > = {
+                      repouso: {
+                        container: 'bg-emerald-950/30 border-emerald-700/40',
+                        text: 'text-emerald-300',
+                        barActive: 'bg-emerald-500',
+                        dot: 'bg-emerald-400',
+                      },
+                      resolucao: {
+                        container: 'bg-indigo-950/40 border-indigo-600/50',
+                        text: 'text-indigo-300',
+                        barActive: 'bg-indigo-500',
+                        dot: 'bg-indigo-400',
+                      },
+                      instavel: {
+                        container: 'bg-amber-950/30 border-amber-700/40',
+                        text: 'text-amber-300',
+                        barActive: 'bg-amber-500',
+                        dot: 'bg-amber-400',
+                      },
+                      tensao: {
+                        container: 'bg-rose-950/30 border-rose-700/50',
+                        text: 'text-rose-300',
+                        barActive: 'bg-rose-500',
+                        dot: 'bg-rose-400',
+                      },
+                    };
+
+                    const palette = styleByCategory[tension.category];
+
+                    return (
+                      <div
+                        id={`chord-tension-indicator-${index}`}
+                        data-tension={tension.category}
+                        className={`mt-1 w-28 px-1.5 py-1 border rounded-none select-none transition-colors ${palette.container}`}
+                        title={`${tension.label} (${tension.romanNumeral}) • ${tension.score}% — ${tension.reason}`}
+                      >
+                        <div className="flex items-center justify-between gap-1 leading-none">
+                          <span className={`flex items-center gap-1 text-[9px] font-medium tracking-tight ${palette.text}`}>
+                            <span className={`w-1.5 h-1.5 shrink-0 ${palette.dot}`} />
+                            <span>{tension.label}</span>
+                          </span>
+                          <span className="text-[9px] font-mono text-slate-400">
+                            {tension.romanNumeral}
+                          </span>
+                        </div>
+
+                        {/* 4-segment harmonic tension meter */}
+                        <div
+                          className="mt-1 grid grid-cols-4 gap-0.5"
+                          aria-label={`Nível de tensão harmônica ${tension.level} de 4`}
+                        >
+                          {[1, 2, 3, 4].map((step) => (
+                            <span
+                              key={step}
+                              className={`h-1 transition-colors ${
+                                step <= tension.level ? palette.barActive : 'bg-slate-500/20'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Duration Stepper & Selector Row (Requirement: Aumentar ou diminuir o tempo de um acorde) */}
                   <div className="mt-1 px-0.5 flex items-center justify-between gap-1 bg-[#12151e] border border-[#232838] p-0.5" title="Duração do acorde (Tempos / Compassos)">
                     <button
@@ -782,8 +1077,22 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
                         if (onUpdateChordRhythm) {
                           onUpdateChordRhythm(index, newRhythm);
                         }
-                        // Preview rhythm briefly
-                        audioEngine.playChordWithPattern(item.chord, instrument, 1.2, item.octaveOffset ?? 0, newRhythm, tempoBpm);
+                        // Preview rhythm at exact chord duration and current BPM (skip separate preview if sequence is already playing and will auto-resync)
+                        if (!isPlaying) {
+                          const previewDurationSec = itemDuration * (60 / tempoBpm);
+                          audioEngine.playChordWithPattern(
+                            item.chord,
+                            instrument,
+                            previewDurationSec,
+                            item.octaveOffset ?? 0,
+                            newRhythm,
+                            tempoBpm,
+                            undefined,
+                            undefined,
+                            undefined,
+                            itemDuration
+                          );
+                        }
                       }}
                       className="w-full bg-[#161a24] hover:bg-[#1c2230] text-slate-300 text-[10px] font-light border border-[#242b3c] focus:border-indigo-500/70 py-0.5 px-1 rounded-none outline-none cursor-pointer transition-colors"
                       title="Padrão Rítmico de Execução"
@@ -889,12 +1198,33 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
         )}
       </div>
 
-      {/* Clear timeline button if not empty */}
+      {/* Clear timeline & tension legend footer if not empty */}
       {timeline.length > 0 && (
-        <div className="flex items-center justify-between pt-1 text-xs text-slate-400 font-light">
-          <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-none bg-emerald-400/70"></span>
-            <span>Clique em qualquer acorde para inspecionar digitação, oitavas e escalas</span>
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs text-slate-400 font-light">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-none bg-emerald-400/70"></span>
+              <span>Clique em qualquer acorde para inspecionar</span>
+            </span>
+            <span className="hidden sm:inline text-slate-500">·</span>
+            <div className="flex items-center gap-2 text-[10px] text-slate-400">
+              <span className="flex items-center gap-1" title="Acorde estável de tônica">
+                <span className="w-1.5 h-1.5 bg-emerald-400" />
+                <span>Repouso</span>
+              </span>
+              <span className="flex items-center gap-1" title="Pouso após dominante ou suspensão">
+                <span className="w-1.5 h-1.5 bg-indigo-400" />
+                <span>Resolução</span>
+              </span>
+              <span className="flex items-center gap-1" title="Movimento, preparação ou suspensão">
+                <span className="w-1.5 h-1.5 bg-amber-400" />
+                <span>Instável</span>
+              </span>
+              <span className="flex items-center gap-1" title="Dominante, trítono ou acorde cromático">
+                <span className="w-1.5 h-1.5 bg-rose-400" />
+                <span>Tensão</span>
+              </span>
+            </div>
           </div>
 
           <button
@@ -907,6 +1237,8 @@ export const ChordTimeline: React.FC<ChordTimelineProps> = ({
             <span>Limpar Sequência</span>
           </button>
         </div>
+      )}
+      </>
       )}
     </div>
   );

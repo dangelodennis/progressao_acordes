@@ -30,19 +30,49 @@ interface ScaleDictionaryPanelProps {
   initialRoot?: string;
   initialScaleId?: string;
   defaultInstrument?: InstrumentType;
+  selectedRoot?: string;
+  selectedScaleId?: string;
+  onRootChange?: (root: string) => void;
+  onScaleIdChange?: (scaleId: string) => void;
+  isExpanded?: boolean;
+  onToggleExpanded?: () => void;
 }
 
 export const ScaleDictionaryPanel: React.FC<ScaleDictionaryPanelProps> = ({
   initialRoot = 'C',
   initialScaleId = 'lydian',
   defaultInstrument = 'piano',
+  selectedRoot: controlledRoot,
+  selectedScaleId: controlledScaleId,
+  onRootChange,
+  onScaleIdChange,
+  isExpanded: controlledExpanded,
+  onToggleExpanded,
 }) => {
-  const [selectedRoot, setSelectedRoot] = useState<string>(initialRoot);
-  const [selectedScaleId, setSelectedScaleId] = useState<string>(initialScaleId);
+  const [internalRoot, setInternalRoot] = useState<string>(initialRoot);
+  const [internalScaleId, setInternalScaleId] = useState<string>(initialScaleId);
+
+  const selectedRoot = controlledRoot ?? internalRoot;
+  const selectedScaleId = controlledScaleId ?? internalScaleId;
+
+  const setSelectedRoot = (nextRoot: string) => {
+    setInternalRoot(nextRoot);
+    onRootChange?.(nextRoot);
+  };
+
+  const setSelectedScaleId = (nextId: string) => {
+    setInternalScaleId(nextId);
+    onScaleIdChange?.(nextId);
+  };
   const [categoryFilter, setCategoryFilter] = useState<ScaleCategory | 'all'>('all');
   const [instrument, setInstrument] = useState<InstrumentType>(defaultInstrument);
   const [visualizerMode, setVisualizerMode] = useState<'piano' | 'guitar' | 'none'>('piano');
-  const [isExpanded, setIsExpanded] = useState<boolean>(true);
+  const [internalExpanded, setInternalExpanded] = useState<boolean>(true);
+  const isExpanded = controlledExpanded ?? internalExpanded;
+  const handleToggleExpanded = () => {
+    if (onToggleExpanded) onToggleExpanded();
+    else setInternalExpanded((prev) => !prev);
+  };
   const [playingNoteIndex, setPlayingNoteIndex] = useState<number | null>(null);
   const [isPlayingFullScale, setIsPlayingFullScale] = useState<boolean>(false);
 
@@ -128,7 +158,7 @@ export const ScaleDictionaryPanel: React.FC<ScaleDictionaryPanelProps> = ({
       className="bg-[#141720] border border-[#232836] rounded-none p-3.5 md:p-4 shadow-xs space-y-4"
     >
       {/* Panel Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#212636] pb-3">
+      <div className={`flex flex-wrap items-center justify-between gap-3 ${isExpanded ? 'border-b border-[#212636] pb-3' : ''}`}>
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-none bg-[#1a1e2a] text-amber-400 border border-[#272d3e] flex items-center justify-center">
             <BookOpen className="w-4 h-4" />
@@ -182,9 +212,10 @@ export const ScaleDictionaryPanel: React.FC<ScaleDictionaryPanelProps> = ({
           <button
             type="button"
             id="btn-toggle-scale-dictionary"
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={handleToggleExpanded}
             className="p-1.5 bg-[#181c26] hover:bg-[#202534] text-slate-400 hover:text-slate-200 border border-[#252a38] text-xs transition-colors"
             title={isExpanded ? 'Recolher Dicionário' : 'Expandir Dicionário'}
+            aria-expanded={isExpanded}
           >
             {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
@@ -221,7 +252,7 @@ export const ScaleDictionaryPanel: React.FC<ScaleDictionaryPanelProps> = ({
                     className={`py-2 px-1 text-center border transition-all text-xs font-mono cursor-pointer active:translate-y-0.5 ${
                       isSelected
                         ? 'bg-[#22293b] text-amber-300 border-amber-500/70 font-bold shadow-xs'
-                        : 'bg-[#161a25] hover:bg-[#1e2332] text-slate-300 border-[#252c3e] hover:text-white'
+                        : 'bg-[#161a25] hover:bg-[#1e2332] text-slate-300 border-[#252c3e] hover:text-slate-100'
                     }`}
                   >
                     <div className="text-xs font-semibold">{k.note}</div>
@@ -279,7 +310,7 @@ export const ScaleDictionaryPanel: React.FC<ScaleDictionaryPanelProps> = ({
                     className={`p-2.5 text-left border transition-all cursor-pointer flex flex-col justify-between ${
                       isSelected
                         ? 'bg-[#1e2436] text-slate-100 border-amber-500/70 shadow-xs'
-                        : 'bg-[#161a25] hover:bg-[#1e2230] text-slate-300 border-[#242a3a] hover:text-white'
+                        : 'bg-[#161a25] hover:bg-[#1e2230] text-slate-300 border-[#242a3a] hover:text-slate-100'
                     }`}
                   >
                     <div>
@@ -369,7 +400,7 @@ export const ScaleDictionaryPanel: React.FC<ScaleDictionaryPanelProps> = ({
                       onClick={() => handlePlayNote(item, idx)}
                       className={`p-2.5 text-center border transition-all cursor-pointer flex flex-col items-center justify-between active:scale-95 ${
                         isPlaying
-                          ? 'bg-amber-500/25 text-white border-amber-400 ring-1 ring-amber-400 shadow-md'
+                          ? 'bg-amber-500/25 text-slate-100 border-amber-400 ring-1 ring-amber-400 shadow-md'
                           : item.isRoot
                           ? 'bg-[#1e273a] text-slate-100 border-indigo-500/70 font-semibold'
                           : item.isCharacteristic
@@ -392,7 +423,7 @@ export const ScaleDictionaryPanel: React.FC<ScaleDictionaryPanelProps> = ({
                       </span>
 
                       {/* Main Note Name */}
-                      <span className="text-sm font-bold font-mono tracking-tight text-white">
+                      <span className="text-sm font-bold font-mono tracking-tight text-slate-100">
                         {item.note}
                       </span>
 
@@ -424,7 +455,7 @@ export const ScaleDictionaryPanel: React.FC<ScaleDictionaryPanelProps> = ({
                   <span className="text-[10px] font-mono text-indigo-300 font-bold mb-1">
                     8ª (T)
                   </span>
-                  <span className="text-sm font-bold font-mono tracking-tight text-white">
+                  <span className="text-sm font-bold font-mono tracking-tight text-slate-100">
                     {scaleNotes[0].note}
                   </span>
                   <span className="text-[10px] text-slate-400 font-sans">

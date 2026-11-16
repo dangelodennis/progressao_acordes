@@ -1,7 +1,7 @@
 import React from 'react';
 import { ChordDefinition, ChordSuggestion, Genre, InstrumentType } from '../types';
 import { audioEngine } from '../utils/audioPlayer';
-import { Sparkles, Plus, Volume2, ArrowRight, Grid, Dices } from 'lucide-react';
+import { Sparkles, Plus, Volume2, ArrowRight, Grid, Dices, ChevronUp, ChevronDown } from 'lucide-react';
 import { getGenreLabel } from '../data/musicTheory';
 
 interface ChordSuggestionsProps {
@@ -14,6 +14,8 @@ interface ChordSuggestionsProps {
   onOpenFullPicker: () => void;
   currentOctaveOffset?: number;
   onGenerateRandomProgression?: () => void;
+  isExpanded?: boolean;
+  onToggleExpanded?: () => void;
 }
 
 export const ChordSuggestions: React.FC<ChordSuggestionsProps> = ({
@@ -26,7 +28,15 @@ export const ChordSuggestions: React.FC<ChordSuggestionsProps> = ({
   onOpenFullPicker,
   currentOctaveOffset = 0,
   onGenerateRandomProgression,
+  isExpanded: controlledExpanded,
+  onToggleExpanded,
 }) => {
+  const [internalExpanded, setInternalExpanded] = React.useState(true);
+  const isExpanded = controlledExpanded ?? internalExpanded;
+  const handleToggleExpanded = () => {
+    if (onToggleExpanded) onToggleExpanded();
+    else setInternalExpanded((prev) => !prev);
+  };
   const handleCardClick = (chord: ChordDefinition) => {
     audioEngine.playChord(chord, instrument, 1.4, currentOctaveOffset);
     onSelectAndAdd(chord);
@@ -90,10 +100,23 @@ export const ChordSuggestions: React.FC<ChordSuggestionsProps> = ({
             <Grid className="w-3.5 h-3.5 text-indigo-400/80" />
             <span>Todos os Acordes</span>
           </button>
+
+          {/* Collapse / Expand Panel Button */}
+          <button
+            id="btn-toggle-suggestions-panel"
+            type="button"
+            onClick={handleToggleExpanded}
+            className="p-1.5 rounded-none bg-[#181c26] hover:bg-[#202534] text-slate-400 hover:text-slate-200 border border-[#262c3c] transition-colors"
+            title={isExpanded ? 'Recolher Sugestões' : 'Expandir Sugestões'}
+            aria-expanded={isExpanded}
+          >
+            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
         </div>
       </div>
 
       {/* Grid of smart suggestion cards */}
+      {isExpanded && (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
         {suggestions.map((item, idx) => {
           const { chord, reason, tag } = item;
@@ -156,6 +179,7 @@ export const ChordSuggestions: React.FC<ChordSuggestionsProps> = ({
           );
         })}
       </div>
+      )}
     </div>
   );
 };

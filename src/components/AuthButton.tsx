@@ -60,7 +60,7 @@ export const AuthButton: React.FC<AuthButtonProps> = ({ syncStatus = 'local', is
               <button
                 type="button"
                 onClick={clearAuthError}
-                className="text-rose-400 hover:text-white"
+                className="text-rose-400 hover:text-slate-100"
               >
                 ✕
               </button>

@@ -32,6 +32,66 @@ export interface BackingTrackOption {
 
 export type InstrumentType = 'piano' | 'guitar';
 
+export type ChordTimbre = 'acoustic' | 'synthesized' | 'orchestral' | 'electric';
+
+export interface ChordTimbreOption {
+  id: ChordTimbre;
+  label: string;
+  badge: string;
+  description: string;
+}
+
+export const CHORD_TIMBRE_OPTIONS: ChordTimbreOption[] = [
+  {
+    id: 'acoustic',
+    label: 'Acústico',
+    badge: 'Natural',
+    description: 'Piano de cauda e violão acústico com harmônicos orgânicos e decaimento natural.',
+  },
+  {
+    id: 'synthesized',
+    label: 'Sintetizado',
+    badge: 'Synth Pad',
+    description: 'Osciladores analógicos com filtro ressonante e ataque moderno para Pop e Eletrônica.',
+  },
+  {
+    id: 'orchestral',
+    label: 'Orquestral',
+    badge: 'Strings',
+    description: 'Ensemble de cordas e sopros com ataque progressivo (swell) e coro estéreo encorpado.',
+  },
+  {
+    id: 'electric',
+    label: 'Piano Elétrico',
+    badge: 'Rhodes / Tine',
+    description: 'Timbre quente e aveludado estilo piano elétrico vintage com brilho metálico sutil.',
+  },
+];
+
+export type ChordPlaybackStyle = 'block' | 'arpeggio';
+
+export interface ChordPlaybackStyleOption {
+  id: ChordPlaybackStyle;
+  label: string;
+  badge: string;
+  description: string;
+}
+
+export const CHORD_PLAYBACK_STYLE_OPTIONS: ChordPlaybackStyleOption[] = [
+  {
+    id: 'block',
+    label: 'Acorde em Bloco',
+    badge: 'Simultâneo',
+    description: 'Todas as notas do acorde soam ao mesmo tempo (harmonia cheia tradicional).',
+  },
+  {
+    id: 'arpeggio',
+    label: 'Arpejo Individual',
+    badge: 'Nota por Nota',
+    description: 'As notas do acorde soam em sequência ascendente como um arpejo suave.',
+  },
+];
+
 export type DisplayMode = 'guitar' | 'piano' | 'both';
 
 export interface ChordDefinition {
@@ -146,6 +206,7 @@ export interface SavedProgression {
   isPreset?: boolean;
   melody?: SavedMelodyConfig;
   chordDurations?: number[];
+  lyrics?: string;
 }
 
 export type MelodyStyle = 'lyrical' | 'riff' | 'arpeggio' | 'blues' | 'ambient';

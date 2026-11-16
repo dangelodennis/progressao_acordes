@@ -10,6 +10,7 @@ import {
   FileMusic,
   Sparkles,
   Layers,
+  Repeat,
 } from 'lucide-react';
 
 interface ExportMidiModalProps {
@@ -49,6 +50,9 @@ export const ExportMidiModal: React.FC<ExportMidiModalProps> = ({
     return 'rock';
   });
 
+  const [enableLooping, setEnableLooping] = useState<boolean>(false);
+  const [loopCount, setLoopCount] = useState<number>(4);
+
   const [filename, setFilename] = useState<string>(() => {
     const safeTitle = songTitle.toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-');
     return safeTitle || 'harmoniq-progressao';
@@ -58,10 +62,16 @@ export const ExportMidiModal: React.FC<ExportMidiModalProps> = ({
   if (!isOpen) return null;
 
   const hasMelody = Boolean(melodyNotes && melodyNotes.length > 0);
+  const effectiveCycles = enableLooping ? loopCount : 1;
 
   const handleExport = (e: React.FormEvent) => {
     e.preventDefault();
     if (!includeChords && !includeMelody && !includeBacking) return;
+
+    const exportBaseName =
+      enableLooping && !filename.toLowerCase().includes('loop')
+        ? `${filename}-loop`
+        : filename;
 
     downloadMidiFile(
       {
@@ -69,13 +79,15 @@ export const ExportMidiModal: React.FC<ExportMidiModalProps> = ({
         melodyNotes: includeMelody ? melodyNotes : null,
         tempoBpm,
         instrument,
-        songTitle: filename,
+        songTitle: exportBaseName,
         includeChords,
         includeMelody: includeMelody && hasMelody,
         includeBackingTrack: includeBacking && backingStyle !== 'none',
         backingStyle: includeBacking ? backingStyle : 'none',
+        enableLooping,
+        loopCount,
       },
-      `${filename}.mid`
+      `${exportBaseName}.mid`
     );
 
     setDownloadSuccess(true);
@@ -85,8 +97,10 @@ export const ExportMidiModal: React.FC<ExportMidiModalProps> = ({
     }, 1200);
   };
 
-  const totalMeasures = timeline.length;
-  const totalDurationSeconds = ((totalMeasures * 4 * 60) / tempoBpm).toFixed(1);
+  const singleCycleBeats = timeline.reduce((sum, item) => sum + (item.durationBeats || 4), 0);
+  const totalExportBeats = singleCycleBeats * effectiveCycles;
+  const totalMeasures = (totalExportBeats / 4).toFixed(singleCycleBeats % 4 === 0 ? 0 : 1);
+  const totalDurationSeconds = ((totalExportBeats * 60) / tempoBpm).toFixed(1);
 
   return (
     <div
@@ -130,7 +144,7 @@ export const ExportMidiModal: React.FC<ExportMidiModalProps> = ({
               Arquivo MIDI gerado com sucesso!
             </h4>
             <p className="text-xs text-slate-400 font-light">
-              O download de <span className="text-indigo-400 font-mono">{filename}.mid</span> foi iniciado.
+              O download de <span className="text-indigo-400 font-mono">{enableLooping && !filename.toLowerCase().includes('loop') ? `${filename}-loop.mid` : `${filename}.mid`}</span> foi iniciado.
             </p>
           </div>
         ) : (
@@ -151,6 +165,11 @@ export const ExportMidiModal: React.FC<ExportMidiModalProps> = ({
                 <span className="text-slate-400 font-light">Compassos / Duração:</span>
                 <span className="font-mono text-slate-200">
                   {totalMeasures} comp. (~{totalDurationSeconds}s)
+                  {enableLooping && (
+                    <span className="ml-1.5 text-[10px] text-amber-300">
+                      ({loopCount === 1 ? 'Clipe alinhado' : `${loopCount}x loop`})
+                    </span>
+                  )}
                 </span>
               </div>
               <div className="flex items-center justify-between text-slate-300">
@@ -285,6 +304,93 @@ export const ExportMidiModal: React.FC<ExportMidiModalProps> = ({
               </div>
             </div>
 
+            {/* DAW Continuous Loop Option */}
+            <div
+              className={`p-3 border rounded-none transition-colors space-y-2.5 ${
+                enableLooping
+                  ? 'bg-[#171d2c] border-amber-500/50'
+                  : 'bg-[#141722] border-[#222838]'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-start gap-2.5">
+                  <div className={`mt-0.5 p-1 border rounded-none ${
+                    enableLooping
+                      ? 'bg-amber-950/50 border-amber-600/50 text-amber-300'
+                      : 'bg-[#181c28] border-[#252b3b] text-slate-400'
+                  }`}>
+                    <Repeat className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-medium text-slate-200">
+                        Modo Loop Contínuo (Para DAW)
+                      </span>
+                      {enableLooping && (
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 bg-amber-950/40 text-amber-300 border border-amber-700/50">
+                          LOOP ATIVO
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400 font-light leading-snug">
+                      Alinha o fim exato da trilha ao compasso e grava marcadores de loop para arrastar direto no Ableton, FL Studio ou Logic.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Toggle Switch */}
+                <button
+                  id="toggle-midi-looping"
+                  type="button"
+                  role="switch"
+                  aria-checked={enableLooping}
+                  onClick={() => setEnableLooping((prev) => !prev)}
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center border transition-colors ${
+                    enableLooping
+                      ? 'bg-amber-500/80 border-amber-400'
+                      : 'bg-[#1a1f2c] border-[#2d3548]'
+                  }`}
+                  title={enableLooping ? 'Desativar Modo Loop' : 'Ativar Modo Loop'}
+                >
+                  <span
+                    className={`inline-block h-3.5 w-3.5 bg-white transition-transform ${
+                      enableLooping ? 'translate-x-4.5' : 'translate-x-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {enableLooping && (
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#242c40] flex-wrap">
+                  <span className="text-[11px] text-slate-300 font-light">
+                    Repetições da frase no arquivo:
+                  </span>
+                  <div className="inline-flex border border-[#283146] bg-[#12151e]">
+                    {[
+                      { val: 1, label: '1x (Clipe)' },
+                      { val: 2, label: '2x' },
+                      { val: 4, label: '4x' },
+                      { val: 8, label: '8x' },
+                    ].map((opt) => (
+                      <button
+                        key={opt.val}
+                        id={`btn-midi-loop-${opt.val}`}
+                        type="button"
+                        onClick={() => setLoopCount(opt.val)}
+                        className={`px-2 py-1 text-[11px] font-mono transition-colors ${
+                          loopCount === opt.val
+                            ? 'bg-amber-500/20 text-amber-300 font-medium border-r border-amber-500/30'
+                            : 'text-slate-400 hover:text-slate-200 border-r border-[#242b3d] last:border-r-0'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Filename input */}
             <div className="space-y-1">
               <label htmlFor="midi-filename-input" className="text-xs font-medium text-slate-300 block">
@@ -300,7 +406,9 @@ export const ExportMidiModal: React.FC<ExportMidiModalProps> = ({
                   className="w-full bg-transparent text-xs text-slate-200 focus:outline-hidden font-mono"
                   required
                 />
-                <span className="text-xs text-slate-500 font-mono ml-1">.mid</span>
+                <span className="text-xs text-slate-500 font-mono ml-1">
+                  {enableLooping && !filename.toLowerCase().includes('loop') ? '-loop.mid' : '.mid'}
+                </span>
               </div>
             </div>
 

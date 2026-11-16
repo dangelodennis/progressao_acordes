@@ -74,7 +74,7 @@ export const FavoritesLibrary: React.FC<FavoritesLibraryProps> = ({
       const items: TimelineChordItem[] = validChords.map((c, idx) => ({
         id: `prev-${prog.id}-${idx}`,
         chord: c,
-        durationBeats: 4,
+        durationBeats: prog.chordDurations?.[idx] ?? 4,
         genreContext: prog.genre,
         octaveOffset: 0,
       }));

@@ -85,7 +85,7 @@ html.light ::-webkit-scrollbar-thumb:hover {
    LIGHT THEME DESIGN SYSTEM FOR HARMONIQ CHORD STUDIO
    ========================================================================== */
 
-/* 1. Shell & Screen Canvas Backgrounds */
+/* 1. Shell & Deep Recessed Canvas Backgrounds */
 html.light .bg-\[\#0c0e12\],
 html.light .bg-\[\#0e1015\],
 html.light .bg-\[\#0e1017\],
@@ -93,11 +93,20 @@ html.light .bg-\[\#0f1117\] {
   background-color: #f8fafc !important;
 }
 
-/* 2. Main Studio Panels, Containers, Cards & Modals */
-html.light .bg-\[\#10131a\],
+html.light .bg-\[\#0b0d12\],
+html.light .bg-\[\#0d0f14\],
+html.light .bg-\[\#0d0f15\],
+html.light .bg-\[\#0d1017\],
+html.light .bg-\[\#0e1118\],
+html.light .bg-\[\#0f1118\] {
+  background-color: #f1f5f9 !important;
+}
+
+/* 2. Main Studio Panels, Outer Cards & Modals */
 html.light .bg-\[\#11131a\],
 html.light .bg-\[\#12141a\],
 html.light .bg-\[\#12151d\],
+html.light .bg-\[\#12151e\],
 html.light .bg-\[\#141720\],
 html.light .bg-\[\#141722\],
 html.light .bg-\[\#161922\],
@@ -107,94 +116,260 @@ html.light .bg-\[\#171b24\] {
   background-color: #ffffff !important;
 }
 
-/* 3. Secondary Items, Buttons, Inputs, Chord Pills */
+/* 2b. Nested Sub-Containers & Inner Analysis Cards (Subtle tint inside white panels) */
+html.light .bg-\[\#10131a\],
+html.light .bg-\[\#10131b\],
+html.light .bg-\[\#10131c\],
+html.light .bg-\[\#10141d\],
+html.light .bg-\[\#11141c\],
+html.light .bg-\[\#11141d\],
+html.light .bg-\[\#121520\],
+html.light .bg-\[\#13161f\],
+html.light .bg-\[\#131722\],
+html.light .bg-\[\#141822\],
+html.light .bg-\[\#141824\],
+html.light .bg-\[\#151822\],
+html.light .bg-\[\#151924\],
+html.light .bg-\[\#161a24\],
+html.light .bg-\[\#161a25\],
+html.light .bg-\[\#171b26\],
+html.light .bg-\[\#171b27\],
+html.light .bg-\[\#171c28\],
+html.light .bg-\[\#171d2c\] {
+  background-color: #f8fafc !important;
+}
+
+/* 3. Secondary Items, Buttons, Inputs, Chord Cards & Badges */
 html.light .bg-\[\#181c24\],
 html.light .bg-\[\#181c26\],
 html.light .bg-\[\#181c28\],
 html.light .bg-\[\#181d28\],
+html.light .bg-\[\#181d2a\],
+html.light .bg-\[\#181d2b\],
 html.light .bg-\[\#191d28\],
 html.light .bg-\[\#191d2a\],
+html.light .bg-\[\#191f2e\],
 html.light .bg-\[\#1a1d26\],
 html.light .bg-\[\#1a1e28\],
 html.light .bg-\[\#1a1e2a\],
 html.light .bg-\[\#1a1f2b\],
+html.light .bg-\[\#1a1f2c\],
+html.light .bg-\[\#1a1f2d\],
+html.light .bg-\[\#1a2030\],
 html.light .bg-\[\#1b202c\],
 html.light .bg-\[\#1b202e\],
 html.light .bg-\[\#1c202a\],
 html.light .bg-\[\#1c212e\],
 html.light .bg-\[\#1c2230\],
+html.light .bg-\[\#1c2232\],
 html.light .bg-\[\#1d222e\],
 html.light .bg-\[\#1d2232\] {
-  background-color: #f8fafc !important;
+  background-color: #f1f5f9 !important;
 }
 
-/* 4. Active Elements, Badges & Hover Surfaces */
+/* 4. Active Elements, Selected Tabs & Highlighted Surfaces */
+html.light .bg-\[\#192030\],
+html.light .bg-\[\#192032\],
+html.light .bg-\[\#1c2233\],
+html.light .bg-\[\#1c2336\],
 html.light .bg-\[\#1e222e\],
 html.light .bg-\[\#1e2330\],
 html.light .bg-\[\#1e2332\],
+html.light .bg-\[\#1e2433\],
+html.light .bg-\[\#1e2436\],
+html.light .bg-\[\#1e2536\],
+html.light .bg-\[\#1e273a\],
 html.light .bg-\[\#1f2432\],
 html.light .bg-\[\#1f2433\],
 html.light .bg-\[\#202534\],
 html.light .bg-\[\#202636\],
+html.light .bg-\[\#20273b\],
 html.light .bg-\[\#222836\],
 html.light .bg-\[\#222838\],
 html.light .bg-\[\#22293a\],
+html.light .bg-\[\#22293b\],
 html.light .bg-\[\#232835\],
 html.light .bg-\[\#252c3d\],
 html.light .bg-\[\#262c3d\],
+html.light .bg-\[\#283146\],
 html.light .bg-\[\#2d3345\] {
-  background-color: #f1f5f9 !important;
+  background-color: #e8eef7 !important;
+}
+
+html.light .bg-\[\#222129\] {
+  background-color: #fffbeb !important;
 }
 
 /* Hover classes in light mode */
+html.light .hover\:bg-\[\#171c29\]:hover,
+html.light .hover\:bg-\[\#181c24\]:hover,
+html.light .hover\:bg-\[\#191d2a\]:hover,
+html.light .hover\:bg-\[\#191f2e\]:hover,
 html.light .hover\:bg-\[\#1a1f2b\]:hover,
+html.light .hover\:bg-\[\#1a1f2c\]:hover,
+html.light .hover\:bg-\[\#1b202c\]:hover,
+html.light .hover\:bg-\[\#1b202e\]:hover,
+html.light .hover\:bg-\[\#1c212e\]:hover,
+html.light .hover\:bg-\[\#1c212f\]:hover,
+html.light .hover\:bg-\[\#1c2230\]:hover,
+html.light .hover\:bg-\[\#1d222e\]:hover,
+html.light .hover\:bg-\[\#1d2232\]:hover,
+html.light .hover\:bg-\[\#1e2230\]:hover,
+html.light .hover\:bg-\[\#1e2332\]:hover,
+html.light .hover\:bg-\[\#1e2434\]:hover,
 html.light .hover\:bg-\[\#1f2432\]:hover,
 html.light .hover\:bg-\[\#202534\]:hover,
+html.light .hover\:bg-\[\#202636\]:hover,
+html.light .hover\:bg-\[\#202738\]:hover,
+html.light .hover\:bg-\[\#212838\]:hover,
+html.light .hover\:bg-\[\#222836\]:hover,
 html.light .hover\:bg-\[\#222838\]:hover,
+html.light .hover\:bg-\[\#22293a\]:hover,
 html.light .hover\:bg-\[\#232835\]:hover,
+html.light .hover\:bg-\[\#23293a\]:hover,
+html.light .hover\:bg-\[\#23293b\]:hover,
+html.light .hover\:bg-\[\#232a3d\]:hover,
 html.light .hover\:bg-\[\#252c3d\]:hover,
-html.light .hover\:bg-\[\#2d3345\]:hover {
+html.light .hover\:bg-\[\#262c3d\]:hover,
+html.light .hover\:bg-\[\#2d3345\]:hover,
+html.light .hover\:bg-\[\#30384c\]:hover {
   background-color: #e2e8f0 !important;
+}
+
+/* 4b. Dark 800/900/950 Tinted Badges & Highlights Converted to Crisp Pastels */
+html.light .bg-indigo-900,
+html.light .bg-indigo-900\/40,
+html.light .bg-indigo-900\/50,
+html.light .bg-indigo-950\/30,
+html.light .bg-indigo-950\/40,
+html.light .bg-indigo-950\/50,
+html.light .bg-indigo-950\/60,
+html.light .bg-indigo-600\/25 {
+  background-color: #eef2ff !important;
+}
+
+html.light .border-indigo-800\/40,
+html.light .border-indigo-800\/50 {
+  border-color: #c7d2fe !important;
+}
+
+html.light .bg-amber-900\/40,
+html.light .bg-amber-950\/20,
+html.light .bg-amber-950\/30,
+html.light .bg-amber-950\/40,
+html.light .bg-amber-950\/50,
+html.light .bg-amber-500\/25 {
+  background-color: #fffbeb !important;
+}
+
+html.light .border-amber-800\/40,
+html.light .border-amber-800\/50,
+html.light .border-amber-800\/60 {
+  border-color: #fde68a !important;
+}
+
+html.light .bg-emerald-950\/30,
+html.light .bg-emerald-950\/40,
+html.light .bg-emerald-950\/60,
+html.light .bg-emerald-500\/30 {
+  background-color: #ecfdf5 !important;
+}
+
+html.light .border-emerald-800\/40 {
+  border-color: #a7f3d0 !important;
+}
+
+html.light .bg-rose-900\/40,
+html.light .bg-rose-900\/50,
+html.light .bg-rose-950\/20,
+html.light .bg-rose-950\/30,
+html.light .bg-rose-950\/40,
+html.light .bg-rose-950\/95 {
+  background-color: #fff1f2 !important;
+}
+
+html.light .border-rose-800,
+html.light .border-rose-800\/40,
+html.light .border-rose-800\/50 {
+  border-color: #fecdd3 !important;
 }
 
 /* 5. Clean, Refined Light Mode Borders */
 html.light .border-\[\#1c2130\],
+html.light .border-\[\#1c2231\],
+html.light .border-\[\#1c2232\],
+html.light .border-\[\#1d2332\],
 html.light .border-\[\#1e2330\],
+html.light .border-\[\#1e2433\],
+html.light .border-\[\#1e2434\],
+html.light .border-\[\#1e2538\],
+html.light .border-\[\#1e2638\],
+html.light .border-\[\#1f2536\],
 html.light .border-\[\#202534\],
+html.light .border-\[\#202535\],
+html.light .border-\[\#202636\],
+html.light .border-\[\#202738\],
 html.light .border-\[\#212634\],
+html.light .border-\[\#212636\],
+html.light .border-\[\#212738\],
 html.light .border-\[\#222736\],
+html.light .border-\[\#222838\],
 html.light .border-\[\#232836\],
+html.light .border-\[\#232838\],
+html.light .border-\[\#232938\],
+html.light .border-\[\#23293a\],
+html.light .border-\[\#232a3c\],
 html.light .border-\[\#242938\],
+html.light .border-\[\#242a3a\],
+html.light .border-\[\#242a3b\],
 html.light .border-\[\#242b3b\],
 html.light .border-\[\#242b3c\],
+html.light .border-\[\#242b3d\],
+html.light .border-\[\#242c40\],
 html.light .border-\[\#252a38\],
 html.light .border-\[\#252a3a\],
+html.light .border-\[\#252b3b\],
 html.light .border-\[\#252b3c\],
+html.light .border-\[\#252b3e\],
+html.light .border-\[\#252c3e\],
 html.light .border-\[\#252c40\],
 html.light .border-\[\#262c3c\],
 html.light .border-\[\#262c3e\],
+html.light .border-\[\#262d40\],
 html.light .border-\[\#262e40\],
+html.light .border-\[\#262e42\],
 html.light .border-\[\#272d3e\],
+html.light .border-\[\#272e42\],
 html.light .border-\[\#282f40\],
 html.light .border-\[\#282f42\],
 html.light .border-\[\#283042\],
+html.light .border-\[\#283044\],
+html.light .border-\[\#283146\],
 html.light .border-\[\#292f40\],
+html.light .border-\[\#293145\],
 html.light .border-\[\#2a3040\],
+html.light .border-\[\#2a3145\],
+html.light .border-\[\#2a344c\],
 html.light .border-\[\#2b3142\],
 html.light .border-\[\#2b3245\],
+html.light .border-\[\#2b3346\],
 html.light .border-\[\#2b3348\],
+html.light .border-\[\#2b354e\],
+html.light .border-\[\#2b3550\],
+html.light .border-\[\#2c344a\],
 html.light .border-\[\#2d3345\],
 html.light .border-\[\#2d3448\],
+html.light .border-\[\#2d3548\],
 html.light .border-\[\#3b455c\] {
-  border-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
 }
 
-/* 6. Typography adjustments for High-Contrast Light Mode (Dark Gray for Maximum Readability) */
+/* 6. Typography adjustments for High-Contrast Light Mode */
 html.light,
 html.light body,
 html.light .text-\[\#94a3b8\],
 html.light .text-\[\#8892b0\] {
-  color: #1e293b !important; /* Rich dark charcoal slate */
+  color: #1e293b !important;
 }
 
 /* Transform razor-thin font-light into clear, readable normal weight in light mode */
@@ -209,7 +384,7 @@ html.light h3,
 html.light h4,
 html.light h5,
 html.light h6 {
-  color: #0f172a !important; /* Deepest dark slate black */
+  color: #0f172a !important;
   font-weight: 550 !important;
 }
 
@@ -220,15 +395,15 @@ html.light .text-slate-200 {
 }
 
 html.light .text-slate-300 {
-  color: #1e293b !important; /* Dark slate */
+  color: #1e293b !important;
 }
 
 html.light .text-slate-400 {
-  color: #1e293b !important; /* Converted from light gray to dark gray for clear reading */
+  color: #334155 !important;
 }
 
 html.light .text-slate-500 {
-  color: #334155 !important; /* Solid dark gray (Slate 700) */
+  color: #475569 !important;
 }
 
 html.light .text-slate-600 {
@@ -240,48 +415,57 @@ html.light .text-slate-700 {
 }
 
 /* Accent texts adjusted for high contrast on light backgrounds */
+html.light .text-indigo-200,
+html.light .text-indigo-300,
 html.light .text-indigo-400,
-html.light .text-indigo-400\/80,
-html.light .text-indigo-300 {
-  color: #4338ca !important; /* Indigo 700 */
+html.light .text-indigo-400\/80 {
+  color: #4338ca !important;
 }
 
+html.light .text-amber-200,
+html.light .text-amber-300,
 html.light .text-amber-400,
 html.light .text-amber-400\/80,
-html.light .text-amber-300 {
-  color: #b45309 !important; /* Amber 700 */
+html.light .text-amber-400\/90 {
+  color: #b45309 !important;
 }
 
+html.light .text-emerald-200,
+html.light .text-emerald-300,
 html.light .text-emerald-400,
-html.light .text-emerald-400\/80,
-html.light .text-emerald-300 {
-  color: #047857 !important; /* Emerald 700 */
+html.light .text-emerald-400\/80 {
+  color: #047857 !important;
 }
 
-html.light .text-rose-400,
-html.light .text-rose-300 {
-  color: #be123c !important; /* Rose 700 */
+html.light .text-rose-200,
+html.light .text-rose-300,
+html.light .text-rose-400 {
+  color: #be123c !important;
 }
 
-/* Preserve bright white text on colorful action buttons & badges */
-html.light [class*="bg-indigo-6"] *,
-html.light [class*="bg-indigo-7"] *,
-html.light [class*="bg-emerald-6"] *,
-html.light [class*="bg-rose-6"] *,
-html.light button.bg-indigo-600,
-html.light button.bg-indigo-600 *,
-html.light button.bg-emerald-600,
-html.light button.bg-emerald-600 *,
-html.light button.bg-rose-600,
-html.light button.bg-rose-600 *,
+/* Preserve bright white text strictly on solid colorful action buttons & badges */
 html.light .bg-indigo-600,
 html.light .bg-indigo-600 *,
+html.light .bg-indigo-600\/80,
+html.light .bg-indigo-600\/80 *,
 html.light .bg-indigo-600\/85,
 html.light .bg-indigo-600\/85 *,
+html.light .bg-indigo-600\/90,
+html.light .bg-indigo-600\/90 *,
+html.light .bg-indigo-500\/85,
+html.light .bg-indigo-500\/85 *,
 html.light .bg-emerald-600,
 html.light .bg-emerald-600 *,
+html.light .bg-emerald-600\/80,
+html.light .bg-emerald-600\/80 *,
+html.light .bg-emerald-700\/80,
+html.light .bg-emerald-700\/80 *,
+html.light .bg-amber-600\/80,
+html.light .bg-amber-600\/80 *,
 html.light .bg-rose-600,
-html.light .bg-rose-600 * {
+html.light .bg-rose-600 *,
+html.light .bg-rose-600\/90,
+html.light .bg-rose-600\/90 * {
   color: #ffffff !important;
 }
 
@@ -301,38 +485,53 @@ html.light textarea::placeholder {
 }
 
 /* 7. Special Instrument Handling: Piano & Guitar */
-html.light .bg-\[\#0d0f14\],
-html.light .bg-\[\#0b0d12\] {
-  background-color: #f1f5f9 !important;
-}
-
-/* Piano Black Keys must stay authentically dark */
-html.light [id*="piano-"] button.z-20.border-\[\#161922\],
-html.light [id*="piano-"] button.bg-\[\#141720\],
-html.light [id*="piano-"] button.bg-\[\#252c3c\],
-html.light [id*="piano-"] button.bg-\[\#12141a\] {
-  background-color: #1e293b !important;
+/* Piano Black Keys must stay authentically dark with crisp white text */
+html.light [id*="piano-"] button.z-20.bg-\[\#141720\],
+html.light [id*="piano-"] button.z-20.bg-\[\#12141a\] {
+  background-color: #0f172a !important;
   color: #f8fafc !important;
-  border-color: #0f172a !important;
+  border-color: #020617 !important;
 }
 
-/* Piano White Keys in light mode */
+html.light [id*="piano-"] button.z-20.bg-\[\#252c3c\] {
+  background-color: #334155 !important;
+  color: #f8fafc !important;
+  border-color: #1e293b !important;
+}
+
+html.light [id*="piano-"] button.z-20.bg-\[\#252c3c\] span,
+html.light [id*="piano-"] button.z-20.bg-\[\#141720\] span,
+html.light [id*="piano-"] button.z-20.bg-\[\#12141a\] span {
+  color: #f8fafc !important;
+}
+
+/* Piano White Keys in light mode: distinguish in-scale (#cbd5e1 -> pure white) vs non-scale (#64748b/40 -> soft gray) */
 html.light [id*="piano-"] button.z-10.bg-\[\#cbd5e1\] {
   background-color: #ffffff !important;
-  border-color: #cbd5e1 !important;
-  color: #334155 !important;
+  border-color: #94a3b8 !important;
+  color: #1e293b !important;
 }
 html.light [id*="piano-"] button.z-10.bg-\[\#cbd5e1\]:hover {
   background-color: #f8fafc !important;
 }
-
-/* Guitar Fretboard in light mode */
-html.light .bg-\[\#0f1118\],
-html.light .bg-\[\#0d0f15\],
-html.light .bg-\[\#121520\] {
-  background-color: #f8fafc !important;
+html.light [id*="piano-"] button.z-10.bg-\[\#64748b\]\/40 {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #64748b !important;
+}
+html.light [id*="piano-"] button.z-10.bg-\[\#64748b\]\/40:hover {
+  background-color: #e2e8f0 !important;
 }
 
+/* Root & Active keys on Piano stay high-contrast */
+html.light [id*="piano-"] button.bg-amber-400,
+html.light [id*="piano-"] button.bg-amber-400 *,
+html.light [id*="piano-"] button.bg-amber-400\/90,
+html.light [id*="piano-"] button.bg-amber-400\/90 * {
+  color: #020617 !important;
+}
+
+/* Guitar Fretboard SVG fret lines in light mode */
 html.light .stroke-\[\#252b3a\] {
   stroke: #cbd5e1 !important;
 }
